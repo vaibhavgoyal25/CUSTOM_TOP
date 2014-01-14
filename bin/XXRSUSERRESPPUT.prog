@@ -1,6 +1,6 @@
 #!/bin/ksh
 # /*********************************************************************************************************
-# * NAME : XXRSUSERRESPPUT.prog                                                                               *
+# * NAME : XXRSUSERRESPPUT.prog   Demo1                                                                            *
 # *                                                                                                        *
 # * DESCRIPTION : Rackspace User responsibility list report output move & archive Program                  *
 # *                                                                                                        *
