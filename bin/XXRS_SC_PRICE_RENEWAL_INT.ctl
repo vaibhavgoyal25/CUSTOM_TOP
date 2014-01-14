@@ -1,6 +1,6 @@
 --/***************************************************************************************
 --*                                                                                      *
---* NAME : XXRS.XXRS_SC_PRICE_RENEWAL_INT.ctl                                            *
+--* NAME : XXRS.XXRS_SC_PRICE_RENEWAL_INT.ctl  Demo2                                          *
 --*                                                                                      *
 --* DESCRIPTION :                                                                        *
 --* Load data into the price adj staging table for renewals.                             *
