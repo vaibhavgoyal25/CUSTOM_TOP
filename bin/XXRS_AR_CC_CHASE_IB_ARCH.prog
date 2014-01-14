@@ -1,0 +1,139 @@
+#!/bin/sh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : xxrs_ar_cc_chase_ib_arch.prog                                                                   *
+# *                                                                                                        *
+# * DESCRIPTION  : This program is used to upload the Credit Card inbound data received into the table     *
+# *                xxrs_ar_cc_chase_ib_tbl and archive the inbound file to the corresponding               *
+# *                archive and outbound directory.                                                         *
+# * AUTHOR       : Ravi                                                                                    *
+# * DATE WRITTEN : 11-JAN-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |        REF#        |   WHO             |     DATE    |                REMARKS                *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    111122-02448    |   Ravi            | 11-JAN-2012 | Initial Creation for R12 Upgradation  *
+# **********************************************************************************************************/
+# * $Header: xxrs_ar_cc_chase_ib_arch.prog 1.0.0 11-JAN-2012 10:41:56 AM Ravi $ *
+#
+
+ERROR_STATUS=0
+DATETIMESTAMP=`date +%Y%m%d%H%M%S`
+INBOUND_LOCATION=$UPLOAD_DIR/AR/GB/
+
+echo
+echo 'Inbound File Name: ' ${INBOUND_LOCATION}/$5
+
+if [ -s "${INBOUND_LOCATION}/$5" ]
+then
+
+  fileextn=`echo $5 | awk -F. '{if (NF!=1) {print $NF;}}' | tr -s "" " "`
+  filename=`basename $5 .${fileextn} | tr -s "" " "`
+
+  echo 'Number of lines:   ' `cat ${INBOUND_LOCATION}/$5 | wc -l`
+  echo
+
+  awk -F, 'BEGIN {OFS = ",";} {if ($1=="RACT0010") {gsub("\"","",$10); split($10,oid,"-"); if (oid[2]=="CSV") {print $14, $15, $19, oid[3], $9;}}}' ${INBOUND_LOCATION}/$5 > ${INBOUND_LOCATION}/${filename}_conv.${fileextn}
+
+  if [ -f "${INBOUND_LOCATION}/${filename}_conv.${fileextn}" ]
+  then
+    echo
+    echo 'Inbound file converted for upload....'
+    echo
+
+    echo
+    echo 'Converted Inbound File Name: ' $INBOUND_LOCATION/${filename}_conv.${fileextn}
+    echo 'Number of records:           ' `cat ${INBOUND_LOCATION}/${filename}_conv.${fileextn} | wc -l`
+    echo
+
+    sqlldr userid=$1 control=${XXRS_TOP}/bin/XXRS_AR_CC_CHASE_IB_TBL.ctl data=${INBOUND_LOCATION}/${filename}_conv.${fileextn} log=${INBOUND_LOCATION}/${filename}_conv.log bad=${INBOUND_LOCATION}/${filename}_conv.bad discard=${INBOUND_LOCATION}/${filename}_conv.dis
+
+    echo
+    echo
+    echo
+
+    if [ -f "${INBOUND_LOCATION}/${filename}_conv.log" ]
+    then
+
+      echo
+      echo 'SQL*LOADER LOG...'
+      echo
+
+      cat ${INBOUND_LOCATION}/${filename}_conv.log
+      mv ${INBOUND_LOCATION}/${filename}_conv.log ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.log
+      rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.log
+    fi
+
+    if [ -f "${INBOUND_LOCATION}/${filename}_conv.bad" ]
+    then
+
+      echo
+      echo 'SQL*LOADER BAD RECORDS...'
+      echo
+
+      cat ${INBOUND_LOCATION}/${filename}_conv.bad
+      mv ${INBOUND_LOCATION}/${filename}_conv.bad ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.bad
+      rm $XXRS_TOP/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.bad
+    fi
+
+    if [ -f "${INBOUND_LOCATION}/${filename}_conv.dis" ]
+    then
+
+      echo
+      echo 'SQL*LOADER DISCARDED RECORDS...'
+      echo
+
+      cat ${INBOUND_LOCATION}/${filename}_conv.dis
+      mv ${INBOUND_LOCATION}/${filename}_conv.dis ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.dis
+      rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.dis
+    fi
+
+    mv ${INBOUND_LOCATION}/${filename}_conv.${fileextn} ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.${fileextn}
+    if [ -s "${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.${fileextn}" ]
+    then
+      gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.${fileextn}
+      gzip ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.${fileextn}.gpg
+    fi
+    rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_conv_${DATETIMESTAMP}.${fileextn}
+
+  else
+
+    echo
+    echo 'Inbound file NOT converted for upload...please check inbound file'
+    echo
+
+    ERROR_STATUS=1
+
+  fi
+else
+
+  echo
+  echo 'Inbound file have NO records or does NOT exists...'
+  echo
+
+  ERROR_STATUS=1
+
+fi
+
+echo
+echo
+echo
+
+if [ -f "${INBOUND_LOCATION}/$5" ]
+then
+  mv ${INBOUND_LOCATION}/$5 ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.${fileextn}
+  if [ -s "${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.${fileextn}" ]
+  then
+    gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.${fileextn}
+    gzip ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.${fileextn}.gpg
+  fi
+  rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.${fileextn}
+fi
+
+find ${XXRS_TOP}/archive/inbound_credit_card_uk/ -ctime +90 -name *gpg*gz -exec rm {} \;
+
+echo
+echo 'Files archived under ${XXRS_TOP}/archive/inbound_credit_card_uk directory.'
+echo
+
+exit $ERROR_STATUS

@@ -1,0 +1,86 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSARXCPCCIBA.prog                                                                             *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace Global Gateway Archive. Called internally from a Java Concurrent               *
+# *               program for inbound                                                                      *
+# *                                                                                                        *
+# * AUTHOR       : Kalyan                                                                                  *
+# * DATE WRITTEN : 10-JAN-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#  | REF#         | WHO             |   DATE      | REMARKS                                         *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0 | 111122-02448 | Kalyan          | 10-JAN-2012 | Initial build for R12 upgrade                   *
+# *********************************************************************************************************/
+#  /* $Header: XXRSARXCPCCIBA.prog 1.0.0 10-JAN-2012 15:48:00 PM Kalyan $ */
+
+echo "-----------------------------------------------------------------------"
+echo "Time: "`date '+%C%y%m%d%H%M%S'`
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Get the processing directory from the parameter
+# ----------------------------------------------------------------------------
+#
+p_process_location=${1}
+p_conc_req_id=${2}
+p_archive_location=${3}
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed to the Job:"
+echo " "
+echo "Processing Location = ${p_process_location}"
+echo "Concurrent Req ID   = ${p_conc_req_id}"
+echo "Archive Location   = ${p_archive_location}"
+echo " "
+#
+# ------------------------------------------------------------------------------------
+# For each file located in the processing directory. We need to archive it 
+# ------------------------------------------------------------------------------------
+#
+cd ${p_process_location}
+#
+echo "---------------------------------------------------------------------------------"
+echo "Encrypting and archieving files"
+echo " "
+#
+for file in *_resp.xml; do
+  if [ -f $file ]; then
+#
+# -----------------------------------------------------------------------------------------
+# Copy the file from the process directory to Archive directory and then
+# encrypt and zip the file
+# -----------------------------------------------------------------------------------------
+#
+    echo " "
+    echo "Archive Response file "${file}
+    echo " "
+#    
+    mv ${file} ${p_archive_location}/${file}_${p_conc_req_id}
+    gpg -e --default-recipient 'OracleDBA' ${p_archive_location}/${file}_${p_conc_req_id}
+    gzip ${p_archive_location}/${file}_${p_conc_req_id}.gpg
+#
+# remove exiting xml response file  
+#
+    rm -f ${p_archive_location}/${file}_${p_conc_req_id}
+#
+  fi
+done
+#
+# -----------------------------------------------------------------------------------------
+# Check if any archive files are older than 120 days then delete those files
+# -----------------------------------------------------------------------------------------
+#
+echo " "
+echo " "
+echo "Purging files older than 120 days from archive folder."
+echo " "
+#
+find ${p_archive_location}/ -ctime +120 -name '*gpg*gz' -exec rm {} \;
+#
+echo "---------------------------------------------------------------------------------"
+echo "Archive Process completed successfully."
+echo "---------------------------------------------------------------------------------"
+echo " "

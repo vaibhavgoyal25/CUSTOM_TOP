@@ -1,0 +1,40 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRSFABALPUR.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Script to purge the records in FA_BALANCES_REPORTS_ITF table.                            *
+# *                                                                                                        *
+# * AUTHOR       : Vaibhav Goyal                                                                           *
+# * DATE WRITTEN : 08-AUG-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |    Racker Ticket#  |         WHO         |      DATE     |                REMARKS            *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    120807-09152    |   Vaibhav Goyal     |  08-AUG-2012  | Initial Creation                  *
+# **********************************************************************************************************/
+#/* $Header: XXRSFABALPUR.prog 1.0.0 08-AUG-2012 02:00:00 PM Vaibhav Goyal $ */
+#
+p_apps_usrn_pwd=$1
+#
+echo "---------------------------------------------------------------------------------"
+echo "STARTING purge process on FA_BALANCES_REPORTS_ITF table."
+echo "---------------------------------------------------------------------------------"
+echo " "
+#
+sqlplus ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+DELETE FROM fa_balances_reports_itf fbri
+      WHERE NOT EXISTS (SELECT 1
+                          FROM fnd_concurrent_requests req
+                         WHERE req.request_id = fbri.request_id
+                           AND req.status_code = 'R');
+EXIT;
+EOF
+#
+echo "---------------------------------------------------------------------------------"
+echo "Purge process COMPLETE."
+echo "---------------------------------------------------------------------------------"
+echo " "
+#
+exit

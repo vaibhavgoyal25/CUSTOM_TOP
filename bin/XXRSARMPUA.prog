@@ -1,0 +1,141 @@
+#!/bin/sh
+#/**************************************************************************************************************
+#*                                                                                                             *
+#* NAME: XXRSARMPUA.prog                                                                                       *
+#*                                                                                                             *
+#* DESCRIPTION:                                                                                                *
+#*   This program is used to upload the miscellaneous payments received                                        *
+#*   (inbound) data into the table 'xxrs_ar_misc_ib_tbl' and archive the                                       *
+#*   inbound file to the specified archive directory.                                                          *
+#*                                                                                                             *
+#* AUTHOR: Sunil Kumar Mallina                                                                                 *
+#* DATE WRITTEN: 05-JAN-2012                                                                                   *
+#*                                                                                                             *
+#* CHANGE CONTROL :                                                                                            *
+#* Version#     |  Ticket Number    | WHO                 |  DATE          |   REMARKS                         *
+#*-------------------------------------------------------------------------------------------------------------*
+#* 1.0.0        |  111122-02448     | Sunil Kumar Mallina |  05-JAN-2012   | R12 Upgradation                   *
+#***************************************************************************************************************/
+#/* $Header: #--.prog 1.0.0 05-JAN-2012 12:40:00 PM Sunil Kumar M $ */
+ERROR_STATUS=0
+DATETIMESTAMP=`date +%Y%m%d%H%M%S`
+#INBOUND_LOCATION=$UPLOAD_DIR/UK/inbound/credit_card
+UPLOAD_FILE=$5
+UPLOAD_LOCATION=$6
+INBOUND_LOCATION=${XXRS_TOP}/data/upload
+
+echo
+echo 'Upload File Name: ' ${UPLOAD_LOCATION}/${UPLOAD_FILE}.csv
+
+pwd
+cd ${INBOUND_LOCATION}
+pwd
+
+if [ -s "${UPLOAD_LOCATION}/${UPLOAD_FILE}.csv" ]
+then
+
+  fileextn=`echo ${UPLOAD_FILE}.csv | awk -F. '{if (NF!=1) {print $NF;}}' | tr -s "" " "`
+  filename=`basename ${UPLOAD_FILE}.csv .${fileextn} | tr -s "" " "`
+
+  INBOUND_FILE=${filename}_${DATETIMESTAMP}.${fileextn}
+  mv ${UPLOAD_LOCATION}/${UPLOAD_FILE}.csv ${INBOUND_LOCATION}/${INBOUND_FILE}
+
+  echo
+  echo 'Inbound File Name: ' ${INBOUND_LOCATION}/${INBOUND_FILE}
+
+  echo 'Number of Records:   ' `cat ${INBOUND_LOCATION}/${INBOUND_FILE} | wc -l`
+  echo
+
+  sqlldr userid=$1 control=${XXRS_TOP}/bin/XXRS_AR_MISC_IB_TBL.ctl data=${INBOUND_LOCATION}/${INBOUND_FILE} log=${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.log bad=${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.bad discard=${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.dis errors=0 discardmax=1
+
+   return_status=$?
+   wait
+   
+   if [ ${return_status} = 0 ]; then
+   echo "SQL*Loader execution SUCCESSFUL." 
+   echo " "
+   else
+   echo "SQL*Loader execution exited with FAILURE, see logfile."
+   echo " " 
+   ERROR_STATUS=1
+   fi   
+
+
+   
+  
+  echo
+  echo
+  echo
+
+  if [ -f "${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.log" ]
+  then
+
+    echo
+    echo 'SQL*LOADER LOG...'
+    echo
+
+    cat ${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.log
+    mv ${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.log ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.log
+    rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.log
+  fi
+
+  if [ -f "${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.bad" ]
+  then
+
+    echo
+    echo 'SQL*LOADER BAD RECORDS...'
+    echo
+
+    cat ${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.bad
+    mv ${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.bad ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.bad
+    rm $XXRS_TOP/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.bad
+  fi
+
+  if [ -f "${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.dis" ]
+  then
+
+    echo
+    echo 'SQL*LOADER DISCARDED RECORDS...'
+    echo
+
+    cat ${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.dis
+    mv ${INBOUND_LOCATION}/${filename}_${DATETIMESTAMP}.dis ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.dis
+    rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${filename}_${DATETIMESTAMP}.dis
+  fi
+
+
+   
+
+
+else
+
+  echo
+  echo 'Upload file have NO records or does NOT exists...'
+  echo
+
+  ERROR_STATUS=1
+
+fi
+
+echo
+echo
+echo
+
+if [ -f "${INBOUND_LOCATION}/${INBOUND_FILE}" ]
+then
+  mv ${INBOUND_LOCATION}/${INBOUND_FILE} ${XXRS_TOP}/archive/inbound_credit_card_uk/${INBOUND_FILE}
+  if [ -s "${XXRS_TOP}/archive/inbound_credit_card_uk/${INBOUND_FILE}" ]
+  then
+    gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/inbound_credit_card_uk/${INBOUND_FILE}
+    gzip ${XXRS_TOP}/archive/inbound_credit_card_uk/${INBOUND_FILE}.gpg
+  fi
+  rm ${XXRS_TOP}/archive/inbound_credit_card_uk/${INBOUND_FILE}
+fi
+
+find ${XXRS_TOP}/archive/inbound_credit_card_uk/ -ctime +90 -name *gpg*gz -exec rm {} \;
+
+echo
+echo 'Files archived under ${XXRS_TOP}/archive/inbound_credit_card_uk directory.'
+echo
+
+exit $ERROR_STATUS

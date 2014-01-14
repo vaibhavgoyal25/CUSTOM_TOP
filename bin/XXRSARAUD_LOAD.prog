@@ -1,0 +1,447 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRSARAUD_LOAD.prog                                                                             *
+# *                                                                                                        *
+# * DESCRIPTION : Script to populate the Account Updater Response From Chase into Oracle Staging Table.    *
+# *                                                                                                        *
+# * AUTHOR       : Sai Manohar                                                                             *
+# * DATE WRITTEN : 04-JAN-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |    Racker Ticket#  |         WHO         |      DATE     |                REMARKS            *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    111122-02448    |   Sai Manohar       |  04-JAN-2012  | R12 Code                          *
+# **********************************************************************************************************/
+# $Header: XXRSARAUD_LOAD.prog  1.0.0 04-JAN-2012 10.00AM Sai Manohar $ 
+#
+file_exists()
+{
+  for file in ${1}; do
+    if [ -e $file ]; then
+      return
+    fi
+  done
+#
+  echo "---------------------------------------------------------------------------------"
+  echo "No file is found to copy."
+  echo "---------------------------------------------------------------------------------"
+  echo " "
+  exit 0 
+}
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of Account Updater Response Load Script."
+echo "Time: "`date +%Y%m%d%H%M%S`
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Assumption: The file is formatted to according to the specification document
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+p_file_name=$5
+p_ssh_key=$6
+p_chase_user_id=$7
+l_stage_location=${XXRS_TOP}/data/ar/globalgateway/response
+l_archive_location=${XXRS_TOP}/archive/ar/globalgateway/response
+l_ctl_file=XXRSARAUD_CTL
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+datetime=`date +%Y%m%d%H%M%S`
+lpad_conc_request_id=`echo ${p_conc_request_id} |awk ' { printf "%015d\n", $0 } '`
+lpad_user_id=`echo ${p_user_id} |awk ' { printf "%015d\n", $0 } '`
+v_exit_status=0 # exit status variable
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Date Time          =  ${datetime}"
+echo "File name pattern  =  ${p_file_name}"
+echo "Ssh Key            =  ${p_ssh_key}"
+echo "Chase User ID      =  ${p_chase_user_id}"
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ---------------------------------------------------------------------------
+# Get the file from the SFTP site and place the file in data folder. Once
+# file is placed in the data folder then iterate through the file and remove
+# it from the SFTP site and decrypt the file for loading the file into the 
+# staging table.
+# ---------------------------------------------------------------------------
+#
+if [ $l_env = "PRD" ]; then
+#
+  cd ${l_stage_location}
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatch1.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*.gpg
+EOF_FTP
+  if (($? != 0))     # Examine error status
+  then
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatch2.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*.gpg
+EOF_FTP
+  fi
+#
+else
+#
+  cd ${l_stage_location}
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatchvar1.chasepaymentech.net<< EOF_FTP 
+get ${p_file_name}*.gpg
+EOF_FTP
+  if (($? != 0))     # Examine error status
+  then
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatchvar2.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*.gpg
+EOF_FTP
+  fi
+#
+fi
+#
+# ---------------------------------------------------------------------------
+# Check For Successful File Transfer from Rackspace SFTP Server to
+# Rackspace App Server.If Success then remove the file from sftp site.
+# ---------------------------------------------------------------------------
+#
+if (($? != 0))     # Examine error status
+then
+  echo " "
+  echo "Error while fetching file(s) from Rackspace SFTP server into App Server"
+  echo "---------------------------------------------------------------------------------"
+  v_exit_status=1  # assigning exit status as 1 to report error
+fi
+#
+file_exists ${p_file_name}*.gpg
+#
+echo " "
+echo "One or more files exist to be processed. STARTING processing.."
+echo " "
+#
+cd ${l_stage_location}
+#
+for file in ${p_file_name}*.gpg; do
+    echo "***********************************************************************"
+  if [ -e ${file} ]; then
+#
+    echo " "
+    echo "-----------------------------------------------------------------------"
+    echo "Processing import file ${file}.."
+    echo " "
+#
+#
+# -----------------------------------------------------------------------------------------
+# Decrypt the file into an XML file for processing
+# -----------------------------------------------------------------------------------------
+#
+    echo "Decrypting response file "${file}
+#    
+    decrypted=`echo ${file} | sed s/.gpg\$//`
+    echo "${decrypted}.txt"
+    gpg -d ${file} > ${decrypted}.txt
+#
+    if [ "$?" = "0" ]; then
+#
+# remove exiting gpg response file  
+#
+      rm -f ${file}
+      echo " [ DONE ]"
+    else
+      rm -f ${file}
+      rm -f ${decrypted}.txt
+      echo " [ FAILED ]"
+      echo "-----------------------------------------------------------------------"
+      echo "Error!!! Unable to Decrypt ${file}  !!!"
+      echo "-----------------------------------------------------------------------"
+      echo " "
+      v_exit_status=1 # # assigning exit status as 1 to report error
+    fi
+#
+#
+# ---------------------------------------------------------------------------
+# Remove the file from the SFTP server once the we have confirmed the file 
+# exist in the application server. If there is no error then continue 
+# processing the file and extract the filename without the extension .csv
+# ---------------------------------------------------------------------------
+#
+    if [ $l_env = "PRD" ]; then
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatch1.chasepaymentech.net<< EOF_FTP
+rm ${file}
+ls
+EOF_FTP
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatch2.chasepaymentech.net<< EOF_FTP
+rm ${file}
+ls
+EOF_FTP
+#
+    else
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatchvar1.chasepaymentech.net<< EOF_FTP
+rm ${file} 
+ls
+EOF_FTP
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_chase_user_id}@netconnectbatchvar2.chasepaymentech.net<< EOF_FTP
+rm ${file}
+ls
+EOF_FTP
+#
+    fi
+#
+    if (($? != 0)) then
+      echo "ERROR!!! while deleting file ${file} from Chase Server"
+      echo " "
+    else
+      echo "REMOVED file ${file} from the Chase server."
+      echo " "
+    fi
+#
+    l_file_name=`echo ${decrypted} | sed s/.txt\$//`
+#
+# ---------------------------------------------------------------------------
+# Check to see if this a normal load or a reverse load.  If so then check
+# to see if the file has already been processed by checking the archive 
+# directory to see if the file exists in the directory. If we already have
+# run the unload then delete the previous file so that we keep the processed
+# data check in synch.
+# ---------------------------------------------------------------------------
+#
+#  Checking for the file still exists or it failed the decryption and
+# got removed. If removed then we don't have to archive the file.
+#
+  if [ -f ${l_stage_location}/${l_file_name}.txt ]; then
+#
+    echo "Checking for already processed files                                   "
+    echo " "
+#
+    archive_file_count=`ls  ${l_archive_location}/${l_file_name}_*_C.dat.gpg.gz | wc -l`
+#
+    if [ ${archive_file_count} -ge 1 ]; then
+# 
+      echo " "
+      echo "-----------------------------------------------------------------------"
+      echo "Error :: File already processed, found in archive directory."
+      echo " "
+      echo "SKIPPING file ${l_file_name}.txt execution.. "
+      rm ${l_file_name}.txt
+      continue
+#
+    else
+#
+      echo " "
+      echo "File was never processed. Continue loading the file. "
+      echo " "
+#
+    fi
+#
+#
+# ---------------------------------------------------------------------------
+# Append the concurrent request id to allow a rollback to occur 
+# if there are any error records. Renaming the file back to *.txt
+# ---------------------------------------------------------------------------
+#
+    echo "-----------------------------------------------------------------------"
+    echo "Adding concurrent request id to each data record for rolling back."
+    echo "-----------------------------------------------------------------------"
+    echo " "
+#
+#  # added double quotes around pipe delimiter
+#
+    cat ${l_stage_location}/${l_file_name}.txt | sed "s=$=|${lpad_conc_request_id}|${lpad_user_id}=" > ${l_stage_location}/${l_file_name}.dat
+
+#
+    rm -f ${l_stage_location}/${l_file_name}.txt
+    cp -p ${l_stage_location}/${l_file_name}.dat ${l_stage_location}/${l_file_name}.txt
+    rm -f ${l_stage_location}/${l_file_name}.dat
+#
+# ---------------------------------------------------------------------------
+# Clean up the log directory that houses the log, bad, and discard files 
+# that SQL Loader produces.
+# ---------------------------------------------------------------------------
+#
+    echo "-----------------------------------------------------------------------"
+    echo "Remove old .log, .bad, and .dsc SQL Loader files from directory."
+    echo "-----------------------------------------------------------------------"
+    echo " "
+#
+    if [ -f ${XXRS_TOP}/log/${l_file_name}.log ]; then
+      rm ${XXRS_TOP}/log/${l_file_name}.log
+    fi
+#
+    if [ -f ${XXRS_TOP}/log/${l_file_name}.bad ]; then
+      rm ${XXRS_TOP}/log/${l_file_name}.bad
+    fi
+#
+    if [ -f ${XXRS_TOP}/log/${l_file_name}.dsc ]; then
+      rm ${XXRS_TOP}/log/${l_file_name}.dsc
+    fi
+#
+# ----------------------------------------------------------------------------
+# Call the SQL Loader to load the data into the Account Updater Staging table
+# ----------------------------------------------------------------------------
+#
+    echo "-----------------------------------------------------------------------"
+    echo "Running SQL Loader process."
+    echo "-----------------------------------------------------------------------"
+    echo " " 
+#
+    sqlldr userid=${p_apps_usrn_pwd} data=${l_stage_location}/${l_file_name}.txt \
+                                  control=${XXRS_TOP}/bin/${l_ctl_file}.ctl \
+                                      log=${XXRS_TOP}/log/${l_file_name}.log \
+                                      bad=${XXRS_TOP}/log/${l_file_name}.bad \
+                                  discard=${XXRS_TOP}/log/${l_file_name}.dsc \
+                                   errors=0 \
+                               discardmax=4
+    return_status=$?
+    wait
+#
+# ---------------------------------------------------------------------------
+# Check the return status of the SQL Loader command.  If there are any 
+# errors, warnings, fatal, or unknown errors, then rollback all the changes 
+# in the Unload script and remove the usage data file. If all the rows in 
+# the datafile are loaded successfully, then move the processed file to the 
+# archive directory for auditing purposes both in the network drive and on 
+# the Oracle side.  If the process opts is validate only then we need to
+# unload the data from the staging table.  This process will be launched
+# from the audit script automatically.
+# ---------------------------------------------------------------------------
+#
+    echo " " 
+    echo "Checking the SQL Loader status."
+    echo "****************"
+    echo ${return_status}
+    echo "****************"
+#
+    case ${return_status} in
+       0) echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded." 
+          echo " "
+          echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+          echo " " 
+          loader_status=SUCCESS;;      
+#
+       1) echo "SQL*Loader execution exited with FAILURE, see logfile."
+          echo " " 
+          echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+          echo " "
+          loader_status=FAIL;;
+#
+# ---------------------------------------------------------------------------
+# 
+# Because of the WHEN clause in control file, the SQL loader will still
+# complete with warning. So, we want to show warning only when the bad file 
+# is created.
+# ---------------------------------------------------------------------------
+# 
+       2) if [ -f ${XXRS_TOP}/log/${l_file_name}.bad ]; then
+             echo "SQL*Loader execution exited with WARNING, see logfile."
+             echo " "
+             echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+             echo " "
+             loader_status=WARNING
+          else
+             echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded."
+             loader_status=SUCCESS
+          fi;;
+#
+       3) echo "SQL*Loader execution encountered a FATAL ERROR."
+          echo " " 
+          echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+          echo " "
+          loader_status=FATAL;;
+#
+       *) echo "UNKNOWN return code."
+          echo " " 
+          echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+          echo " "
+          loader_status=UNKNOWN;;
+#
+    esac
+#
+# -----------------------------------------------------------------------------
+# If the loader return status is sucessful then submit the GL Interface program
+# and archive the data file
+# -----------------------------------------------------------------------------
+#
+    if [ ${loader_status} = SUCCESS ]; then
+#
+        echo "-----------------------------------------------------------------------"
+        echo "Archiving data file. Marking archive file as completed "
+        echo "-----------------------------------------------------------------------"
+        mv -f ${l_stage_location}/${l_file_name}.txt \
+            ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat
+
+      if [ $l_env = "PRD" ]; then 
+        gpg -e --default-recipient "OracleDBA" ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat
+      else
+        gpg -e --default-recipient AD788575 ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat
+      fi
+        gzip ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat.gpg
+        rm -f ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat 
+        wait
+#
+        find ${l_archive_location}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+#      
+        echo "-----------------------------------------------------------------------"
+        echo "Load Successful for file ${l_file_name}.txt  "
+        echo "-----------------------------------------------------------------------"
+        echo " "
+    else
+
+      echo " "
+      echo "Archiving data file. Marking archive file as failed "
+      echo " "
+#
+      mv -f ${l_stage_location}/${l_file_name}.txt \
+           ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat
+
+      if [ $l_env = "PRD" ]; then 
+        gpg -e --default-recipient "OracleDBA" ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat
+      else
+        gpg -e --default-recipient AD788575 ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat
+      fi
+
+      gzip ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat.gpg
+      rm -f ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat 
+      wait
+#
+      find ${l_archive_location}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+#
+        echo "-----------------------------------------------------------------------"
+        echo "Load Errored for file ${l_file_name}.txt  "
+        echo "-----------------------------------------------------------------------"
+        echo " "
+#
+    fi
+#
+#  added to avoid archiving of the file that failed decryption
+#
+  else 
+    echo " "
+    echo "-----------------------------------------------------------------------"
+    echo "File ${l_file_name}.txt not present in staging directory to Process"
+    echo "-----------------------------------------------------------------------"
+    echo " "
+  fi 
+#
+#  End of if statement 
+#  
+  echo "***********************************************************************"
+#
+  fi
+#
+done
+#
+# Code Added to return the program status back to the concurrent request
+#
+echo "After Processing v_exit_status      =  ${v_exit_status}"
+exit ${v_exit_status}

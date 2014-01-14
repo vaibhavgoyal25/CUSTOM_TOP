@@ -1,0 +1,279 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSARDDOBMA.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace Global Gateway direct debit Outbound Move & Archive Program                    *
+# *                                                                                                        *
+# * AUTHOR       : Kalyan                                                                                  *
+# * DATE WRITTEN : 09-MAR-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * SR#    VER        REF#           WHO            DATE            REMARKS                                *
+# *  1     1.0.0      111122-02448   Kalyan         09-MAR-2012     Initial build                          *
+# *********************************************************************************************************/
+#----------------------------------------------------------------------------------------
+# adding alert message to DBAs in case of failed connection to Chase server
+#----------------------------------------------------------------------------------------
+#
+MailOutFile()
+{
+  /bin/mail bruce.martinez@rackspace.com,tim.cowen@rackspace.com -s "Alert Unable to Connect to Chase Server"
+}
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# The upload directory is always derived from responsibility 
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+v_upload_dir=`eval echo "${5}"`
+v_ssh_key=`eval echo "${6}"`
+# 110121-06252 - now sending the chase user id as a parameter
+user_id=`eval echo "${7}"`
+date=`date +%Y%m%d`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+v_exit_status=0
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "Path               = "$0
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Environment        =  ${l_env}"
+echo "ssh Key            =  ${v_ssh_key}"
+echo "chase user id      =  ${user_id}"
+echo "v_exit_status      =  ${v_exit_status}"
+#
+filedate=`date '+%C%y%m%d'`
+#
+requestid=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+FROM fnd_concurrent_requests fcr,
+     fnd_concurrent_programs fcp,
+     fnd_concurrent_programs_tl fcpt
+WHERE fcp.concurrent_program_id = fcr.concurrent_program_id
+  AND fcp.application_id = fcr.program_application_id
+  AND fcpt.concurrent_program_id = fcp.concurrent_program_id
+  AND fcpt.application_id = fcp.application_id
+  AND fcpt.language = USERENV('LANG')
+  AND fcp.concurrent_program_name = 'XXRSARDDOB'
+  AND fcr.parent_request_id IN (SELECT fcr_sibling.request_id
+                                FROM fnd_concurrent_requests fcr_sibling
+                                WHERE fcr_sibling.parent_request_id = (SELECT fcr_parent.parent_request_id
+                                                                       FROM fnd_concurrent_requests fcr_parent
+                                                                       WHERE fcr_parent.request_id = (SELECT fcr_current.parent_request_id
+                                                                                                      FROM fnd_concurrent_requests fcr_current
+                                                                                                      WHERE fcr_current.request_id = $4
+                                                                                                     )
+                                                                      )
+                               )
+;
+EXIT;
+EOF`
+#
+  requestid=`echo ${requestid}|tr -s "" " "`
+#
+  echo " "
+  echo 'Request ID of Global Gateway Outbound FILE: ' ${requestid}
+  echo " "
+#
+# ------------------------------------------------------------------------
+# 110307-04281 Getting the count of records that has been fetched for 
+# corresponding Outbound request id
+# ------------------------------------------------------------------------
+#
+reccount=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT count(*)
+FROM xxrs.xxrs_ar_orbital_gateway_dtls
+WHERE req_request_id = ${requestid}
+;
+EXIT;
+EOF`
+#
+  reccount=`echo ${reccount}|tr -s "" " "`
+#
+  echo " "
+  echo 'Record Count For Global Gateway Outbound FILE: ' ${reccount}
+  echo " "
+#
+# ------------------------------------------------------------------------
+# 110307-04281 End of getting the record count
+# ------------------------------------------------------------------------
+#
+org_id=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fnd_profile.value('ORG_ID') org_id
+FROM dual;
+EXIT;
+EOF`
+#
+  org_id=`echo ${org_id}|tr -s "" " "`
+#
+#
+  user_id=`echo ${user_id}|tr -s "" " "`
+#
+# -----------------------------------------------------------------------------------------
+# Keep files in $V_UPLOAD_DIR for a day and cleanup the directory. This is required before the if 
+# condition in order to avoid any confusion in getting the output file.
+#
+# Check the output directory to find if the report is generated.
+# if yes, then copy the output file to the $UPLOAD_DIR
+# -----------------------------------------------------------------------------------------
+#
+  find ${v_upload_dir}/ -ctime +0 -name 'xxrs*dd*.*' -exec rm {} \;
+
+  if [ -f ${APPLCSF}/${APPLOUT}/o${requestid}.out ]; then
+#
+# ------------------------------------------------------------------------
+# Getting the FILEID from the outbound request file and 
+# rename the output file using the FILEID in the outbound XML
+# ------------------------------------------------------------------------
+#
+    var=`eval grep fileID.xxrs ${APPLCSF}/${APPLOUT}/XXRSARDDOB_${requestid}_1.XML`
+    echo ${var}
+    pos=`echo | awk '{ print index("'"${var}"'", ">")} '`
+    echo ${pos}
+    len=${#var}
+    echo ${len}
+    filename=`echo | awk '{print substr("'"${var}"'","'"${pos}"'"+1,"'"${len}"'"-9-"'"${pos}"'")}'`
+    echo ${filename}
+#
+# different gpg key is used in PROD
+if [ $l_env = "PRD" ]; then  
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/XXRSARDDOB_${requestid}_1.XML >> ${v_upload_dir}/${filename}.xml
+    cp ${v_upload_dir}/${filename}.xml ${XXRS_TOP}/archive/ar/globalgateway/request
+    gpg -e --default-recipient 'B4EDFEBE' ${v_upload_dir}/${filename}.xml     
+    rm -f ${APPLCSF}/${APPLOUT}/XXRSARDDOB_${requestid}_1.XML
+    rm -f ${APPLCSF}/${APPLOUT}/o${requestid}*.out
+    rm -f ${v_upload_dir}/${filename}.xml    
+#
+# Code Change for archiving the data file by encrypting and zipping the XML output
+#
+    gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/ar/globalgateway/request/${filename}.xml
+    gzip ${XXRS_TOP}/archive/ar/globalgateway/request/${filename}.xml.gpg
+    rm -f $XXRS_TOP/archive/ar/globalgateway/request/${filename}.xml
+else
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/XXRSARDDOB_${requestid}_1.XML >> ${v_upload_dir}/${filename}.xml
+    cp ${v_upload_dir}/${filename}.xml ${XXRS_TOP}/archive/ar/globalgateway/request
+    gpg -e --default-recipient 'E7912770' ${v_upload_dir}/${filename}.xml     
+    #rm -f ${APPLCSF}/${APPLOUT}/XXRSARDDOB_${requestid}_1.XML
+    #rm -f ${APPLCSF}/${APPLOUT}/o${requestid}*.out
+    rm -f ${v_upload_dir}/${filename}.xml
+#
+# Code Change for, archiving the data file by encrypting and zipping the XML output
+#
+    gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/ar/globalgateway/request/${filename}.xml
+    gzip ${XXRS_TOP}/archive/ar/globalgateway/request/${filename}.xml.gpg
+    rm -f $XXRS_TOP/archive/ar/globalgateway/request/${filename}.xml
+fi
+#
+# ------------------------------------------------------------------------
+# IF the record count is ZERO then encrypt, zip and archive
+# the output file without placing it on the Chase server.
+# ------------------------------------------------------------------------
+#
+if [ ${reccount} = 0 ]; then
+#
+#
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file ${filename} is located at "${XXRS_TOP}/archive/ar/globalgateway/request
+    echo " "
+    echo "---------------------------------------------------------------------------------"
+    echo "File Does Not contain any data to be processed.No File Transferred to Chase."
+    echo "---------------------------------------------------------------------------------"
+#
+# Code Change For, removed the exit 1 since cleaning up of the data directory 
+# need to happen at the end.
+#
+    v_exit_status=1
+#
+# ------------------------------------------------------------------------
+# ELSE the file is placed on the Chase server for processing
+# ------------------------------------------------------------------------
+#
+else
+# -----------------------------------------------------------------------------------------
+# copy extract file to Global Gateway server using SFTP 
+# copy only if instance is PRD otherwise do not copy file to PRD  
+# -----------------------------------------------------------------------------------------
+#
+if [ $l_env = "PRD" ]; then 
+cd ${v_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${v_ssh_key} ${user_id}@orbitalbatch.Paymentech.net<< EOF_FTP
+put ${filename}.xml.gpg
+EOF_FTP
+  if (($? != 0))     # Examine error status
+  then
+      echo "---------------------------------------------------------------------------------"
+      echo "Trying to Connect to Fallback Paymentech Server orbitalbatch2.Paymentech.net"
+      cd ${v_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${v_ssh_key} ${user_id}@orbitalbatch2.Paymentech.net<< EOF_FTP
+put ${filename}.xml.gpg
+EOF_FTP
+  fi
+#
+else
+#
+cd ${v_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${v_ssh_key} ${user_id}@orbitalbatchvar.Paymentech.net<< EOF_FTP
+put ${filename}.xml.gpg
+ls -ltr ${filename}.xml.gpg
+EOF_FTP
+fi
+#
+      if (($? != 0))
+      then
+        print " Error placing file on chase server "
+#
+         echo "---------------------------------------------------------------------------------"
+         echo "Output file "${filename}.xml.gpg "is located at "${v_upload_dir}
+         echo "Generated File Need to be Transferred manually to Chase"
+#
+# Code Change For, removed exit command and setting the exit status. Also failed to
+# connect to both the servers so alerting DBA
+#
+         MailOutFile
+         v_exit_status=1
+#
+      else
+        echo 'File Successfully Placed on Chase Server' 
+#
+      fi
+#
+fi
+#
+#
+# -----------------------------------------------------------------------------------------
+# gzip archive/globalgateway/request/${filename}.xml.gpg
+# -----------------------------------------------------------------------------------------
+#
+    find ${XXRS_TOP}/archive/ar/globalgateway/request/ -ctime +120 -name '*gpg*gz' -exec rm {} \;
+
+  else
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file generated by concurrent program is not found."
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+# 110812-05535 changed from exit to v_exit_status variable
+   v_exit_status=1
+  fi
+#
+# Code Change For 110812-05535, Finally remove the encrypted data file from Data directory
+#
+  rm -f $XXRS_TOP/data/ar/globalgateway/request/${filename}.xml.gpg
+#
+# Code Added For 110812-05535, to return the program status back to the concurrent request
+#
+  echo "After Processing v_exit_status      =  ${v_exit_status}"
+  exit ${v_exit_status}

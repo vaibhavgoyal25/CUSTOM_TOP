@@ -1,0 +1,274 @@
+/*****************************************************************************************
+* NAME : XXRS_SC_ACT_PRD_RES_VW.sql                                                      *
+*                                                                                        *
+* DESCRIPTION :                                                                          *
+* View to list all types of billing resources for account products                       *
+*                                                                                        *
+* AUTHOR       : Pavan Amirineni                                                         *
+* DATE WRITTEN : 27-AUG-2013                                                             *
+*                                                                                        *
+* CHANGE CONTROL :                                                                       *
+* Version# | Ticket #    | WHO             |  DATE       |   REMARKS                     *
+*----------------------------------------------------------------------------------------*
+* 1.0.0   | 130829-07967 | Pavan Amirineni | 27-AUG-2013 | Initial Built                 *
+*****************************************************************************************/
+/* $Header:  XXRS_SC_ACT_PRD_RES_VW.sql 1.0.0 27-AUG-2013 10:00:00 AM Pavan Amirineni$ */ 
+
+CREATE OR REPLACE VIEW APPS.XXRS_SC_ACT_PRD_RES_VW
+AS
+  SELECT   org_id
+         , cust_account_id
+         , cust_acct_site_id
+         , contract_snid
+         , product_snid
+         , resource_snid
+         , product_def_snid
+         , resource_def_snid
+         , product_resource_def_snid
+         , opportunity_num
+         , device_num
+         , support_team
+         , account_manager_name
+         , location_code
+         , resource_name
+         , spcl_price_flag
+         , tiered_flag
+         , CASE
+             WHEN NVL ( prepay_months, 0 ) > 0
+             THEN
+               CASE
+                 WHEN NVL ( free_time, 0 ) > 0
+                 THEN
+                   GREATEST ( ( quantity - free_time + 1 )
+                            ,0
+                             ) * prepay_months
+                 ELSE
+                   quantity * prepay_months
+               END
+             ELSE
+               CASE
+                 WHEN NVL ( free_time, 0 ) > 0
+                 THEN
+                   GREATEST ( ( quantity - free_time + 1 )
+                            , 0
+                             )
+                 ELSE
+                   quantity
+               END
+           END
+             "QUANTITY"
+         , unit_of_measure_code
+         , NVL ( unit_price, -2 ) "UNIT_PRICE"
+         , CASE
+             WHEN NVL ( prepay_months, 0 ) > 0
+             THEN
+               CASE
+                 WHEN NVL ( free_time, 0 ) > 0
+                 THEN
+                   GREATEST ( ( quantity - free_time + 1 )
+                            ,0
+                             ) * NVL ( unit_price, -2 ) * prepay_months
+                 ELSE
+                   quantity * NVL ( unit_price, -2 ) * prepay_months
+               END
+             ELSE
+               CASE
+                 WHEN NVL ( free_time, 0 ) > 0
+                 THEN
+                   GREATEST ( ( quantity - free_time + 1 )
+                            ,0
+                             ) * NVL ( unit_price, -2 )
+                 ELSE
+                   quantity * NVL ( unit_price, -2 )
+               END
+           END
+             "AMOUNT"
+         , free_time
+         , receipt_method_id
+         , bank_account_uses_id
+         , po_number
+         , prepay_months
+         , product_name
+         , ticket_num
+         --          COMPONENT_CODE,
+         --          UPGRADE_FEE,
+         , excl_from_daily_bill_flag
+         , resource_num
+         , product_status_code
+         , product_status_name
+         , resource_billing_type_code
+         , resource_billing_type_name
+         , billing_start_date
+         , billing_end_date
+         , billed_date
+         , date_cancelled
+         , service_id          
+         , prepay_start_date   
+         , prepay_end_date     
+      FROM ( SELECT aprod.org_id
+                  , aprod.cust_account_id
+                  , aprod.cust_acct_site_id
+                  , aprod.contract_snid
+                  , aprod.account_product_snid "PRODUCT_SNID"
+                  , arsrc.account_resource_snid "RESOURCE_SNID"
+                  , aprod.product_def_snid
+                  , prdt.resource_def_snid
+                  , arsrc.product_resource_def_snid
+                  , cont.opportunity_num
+                  , LTRIM ( RTRIM ( arsrc.device_num ) ) "DEVICE_NUM"
+                  , cont.support_team
+                  , cont.account_manager_name
+                  , aprod.location_code "LOCATION_CODE"
+                  , rdt.resource_name
+                  , arsrc.spcl_price_flag
+                  , rdt.tiered_flag
+                  , arsrc.quantity
+                  , rdt.unit_of_measure_code
+                  , xxrs_sc_utl_0001.xxrs_sc_ci_get_price_0001 (
+                                                                 arsrc.billing_start_date
+                                                               , arsrc.spcl_price_flag
+                                                               , rdt.tiered_flag
+                                                               , aprod.org_id
+                                                               , aprod.cust_account_id
+                                                               , aprod.cust_acct_site_id
+                                                               , prdt.resource_def_snid
+                                                               , arsrc.account_resource_snid
+                                                               , arsrc.quantity
+                                                               , arsrc.unit_price
+                                                               , -2
+                    )
+                      "UNIT_PRICE"
+                  , 0 "AMOUNT"
+                  , CASE
+                      WHEN rdt.tiered_flag = 'Y' 
+                      THEN
+                        xxrs_sc_utl_0001.xxrs_sc_ci_get_freetime_0001 (
+                                                                        arsrc.billing_start_date
+                                                                      , arsrc.spcl_price_flag
+                                                                      , rdt.tiered_flag
+                                                                      , aprod.org_id
+                                                                      , aprod.cust_account_id
+                                                                      , aprod.cust_acct_site_id
+                                                                      , prdt.resource_def_snid
+                                                                      , arsrc.account_resource_snid
+                                                                      , arsrc.quantity
+                                                                      , arsrc.unit_price
+                                                                      , -2
+                        )
+                      ELSE
+                        0
+                    END
+                      "FREE_TIME"
+                  , aprod.receipt_method_id "RECEIPT_METHOD_ID"
+                  , aprod.bank_account_uses_id "BANK_ACCOUNT_USES_ID"
+                  , NVL ( arsrc.po_number, aprod.po_number ) "PO_NUMBER" 
+                  , arsrc.prepay_months
+                  , pdt.product_name
+                  , cont.ticket_num
+                  ,                         --           dprod.component_code,
+                    --           dprod.renewal_flag,
+                    --           dprod.upgrade_fee,
+                    arsrc.exclude_from_billing_flag "EXCL_FROM_DAILY_BILL_FLAG"
+                  , arsrc.resource_num
+                  , aprod.product_status_code
+                  , ( SELECT flv.meaning
+                        FROM applsys.fnd_lookup_values flv
+                           , applsys.fnd_application fa
+                       WHERE fa.application_short_name = 'XXRS'
+                         AND flv.language = USERENV ( 'LANG' )
+                         AND flv.view_application_id = fa.application_id
+                         AND flv.security_group_id = 0
+                         AND flv.lookup_type = 'RS_SC_PRODUCT_STATUS'
+                         AND flv.lookup_code = aprod.product_status_code
+                         AND flv.enabled_flag = 'Y'
+                         AND NVL ( arsrc.billing_start_date, SYSDATE ) BETWEEN NVL (
+                                                                                     flv.start_date_active
+                                                                                   , arsrc.billing_start_date
+                                                                               )
+                                                                           AND NVL (
+                                                                                     flv.end_date_active
+                                                                                   , arsrc.billing_start_date
+                                                                               ) )
+                      product_status_name
+                  , rdt.resource_billing_type_code
+                  , ( SELECT flv.meaning
+                        FROM applsys.fnd_lookup_values flv
+                           , applsys.fnd_application fa
+                       WHERE fa.application_short_name = 'XXRS'
+                         AND flv.language = USERENV ( 'LANG' )
+                         AND flv.view_application_id = fa.application_id
+                         AND flv.security_group_id = 0
+                         AND flv.lookup_type = 'XXRS_SC_RESOURCE_BILLING_TYPE'
+                         AND flv.lookup_code = rdt.resource_billing_type_code
+                         AND flv.enabled_flag = 'Y'
+                         AND NVL ( arsrc.billing_start_date, SYSDATE ) BETWEEN NVL (
+                                                                                     flv.start_date_active
+                                                                                   , arsrc.billing_start_date
+                                                                               )
+                                                                           AND NVL (
+                                                                                     flv.end_date_active
+                                                                                   , arsrc.billing_start_date
+                                                                               ) )
+                      resource_billing_type_name
+                  , arsrc.billing_start_date
+                  , arsrc.billing_end_date
+                  , arsrc.billed_date
+                  , aprod.date_cancelled
+                  , arsrc.service_id                      
+                  , arsrc.prepay_start_date
+                  , arsrc.prepay_end_date
+               FROM xxrs.xxrs_sc_account_product_tbl aprod
+                  , xxrs.xxrs_sc_account_resource_tbl arsrc
+                  , xxrs.xxrs_sc_product_def_tbl pdt
+                  , xxrs.xxrs_sc_product_rsrc_def_tbl prdt
+                  , xxrs.xxrs_sc_resource_def_tbl rdt
+                  , xxrs.xxrs_sc_contract_tbl cont
+              WHERE 1 = 1
+                AND aprod.locked_flag != 'P'
+                AND aprod.bill_flag = 'T'
+                AND aprod.void_flag = 'F'
+                AND arsrc.voided_flag = 'F'
+                AND arsrc.account_product_snid = aprod.account_product_snid
+                AND pdt.product_def_snid = aprod.product_def_snid
+                AND aprod.product_status_code IN ( SELECT flv.lookup_code
+                                                     FROM applsys.fnd_lookup_values flv
+                                                        , applsys.fnd_application fa
+                                                    WHERE fa.application_short_name =
+                                                            'XXRS'
+                                                      AND flv.language =
+                                                            USERENV ( 'LANG' )
+                                                      AND flv.view_application_id =
+                                                            fa.application_id
+                                                      AND flv.security_group_id =
+                                                            0
+                                                      AND flv.lookup_type =
+                                                            'RS_SC_PRODUCT_STATUS'
+                                                      AND flv.meaning IN ( 'Active'
+                                                                         , 'Pending Cancellation' )
+                                                      AND flv.enabled_flag =
+                                                            'Y'
+                                                      AND NVL (
+                                                                arsrc.billing_start_date
+                                                              , SYSDATE
+                                                          ) BETWEEN NVL (
+                                                                          flv.start_date_active
+                                                                        , arsrc.billing_start_date
+                                                                    )
+                                                                AND NVL (
+                                                                          flv.end_date_active
+                                                                        , arsrc.billing_start_date
+                                                                    ) )
+                AND prdt.product_resource_def_snid =
+                      arsrc.product_resource_def_snid
+                AND rdt.resource_def_snid = prdt.resource_def_snid
+                AND pdt.product_type = 'A'
+                AND rdt.resource_type = pdt.product_type
+                AND cont.contract_snid = aprod.contract_snid )
+     WHERE 1 = 1
+  ORDER BY cust_account_id
+         , cust_acct_site_id
+         , po_number
+         , receipt_method_id
+         , bank_account_uses_id
+         , product_name
+         , resource_name;

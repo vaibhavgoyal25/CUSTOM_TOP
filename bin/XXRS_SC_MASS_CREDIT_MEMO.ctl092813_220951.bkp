@@ -1,0 +1,57 @@
+-- /**********************************************************************************************************************
+-- *                                                                                                                     *
+-- * NAME : XXRS_SC_MASS_CREDIT_MEMO.ctl                                                                                 *
+-- *                                                                                                                     *
+-- * DESCRIPTION :                                                                                                       *
+-- * Load data into the invoice worksheet int table.                                                                     *
+-- *                                                                                                                     *
+-- * AUTHOR       : Vaibhav Goyal                                                                                        *
+-- * DATE WRITTEN : 03/01/2012                                                                                           *
+-- *                                                                                                                     *
+-- * CHANGE CONTROL :                                                                                                    *
+-- * Version#     |  Racker Ticket #  | WHO             |  DATE          |   REMARKS                                     *
+-- *---------------------------------------------------------------------------------------------------------------------*
+-- * 1.0.0        |  111122-02448     | Vaibhav Goyal   |  03/01/2012    | Initial Creation                              *
+-- ***********************************************************************************************************************/
+OPTIONS (SKIP=1)
+LOAD DATA
+APPEND
+INTO TABLE XXRS.XXRS_SC_INVOICE_WKST_INT_TBL
+FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+TRAILING NULLCOLS
+(
+  device_num "Trim(:device_num)",
+  account_number "Trim(:account_number)",
+  product_name "Trim(:product_name)",
+  resource_name "Trim(:resource_name)",
+  extended_selling_price "Trim(:extended_selling_price)",
+  period_date "TO_DATE(:period_date, 'mm/dd/yyyy')", 
+  description ":description",
+  conc_req_id ":conc_req_id",
+  created_by ":created_by",
+  invoiced_qty CONSTANT "1",
+  unit_selling_price "Trim(:extended_selling_price)",
+  cust_account_id "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'CUST_ACCOUNT_ID')",
+  cust_acct_site_id "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'CUST_ACCT_SITE_ID')",       
+  site_use_id "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'SITE_USE_ID')",         
+  currency_code "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'CURRENCY_CODE')",
+  product_def_snid "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'PRODUCT_DEF_SNID')",
+  resource_def_snid "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'RESOURCE_DEF_SNID')",
+  business_unit_acct_seg "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'BUSINESS_UNIT_ACCT_SEG')",
+  support_team_acct_seg "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'SUPPORT_TEAM_ACCT_SEG')",
+  customer_name "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'CUSTOMER_NAME')",
+  business_unit "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'BUSINESS_UNIT')",
+  support_team "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'SUPPORT_TEAM')",
+  location_meaning "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'LOCATION')",
+  location_code "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'LOCATION_CODE')",
+  org_id "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'ORG_ID')",
+  uom_code "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'UOM_CODE')",
+  service_id "xxrs_sc_invoice_wkst_pkg.get_sc_details(:account_number,:device_num,:product_name,:resource_name,'SERVICE_ID')", --110921-06291 
+  trx_type CONSTANT "Credit Memo", --110921-06291 
+  status_code CONSTANT "0", 
+  invoice_wkst_snid "xxrs_sc_invoice_wkst_snid.nextval",
+  creation_date SYSDATE,
+  last_update_login CONSTANT "-1",
+  last_update_date SYSDATE,
+  last_updated_by ":created_by"
+)

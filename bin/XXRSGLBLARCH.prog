@@ -1,0 +1,142 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSGLBLARCH.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace Blackline Move & Archive Program                                               *
+# *                                                                                                        *
+# * AUTHOR       : Kalyan                                                                                  *
+# * DATE WRITTEN : 22-DEC-2011                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#  | REF#         | WHO             |   DATE      | REMARKS                                         *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0 | 111122-02448 | Kalyan          | 22-DEC-2011 | Initial build                                   *
+# *********************************************************************************************************/
+echo "-----------------------------------------------------------------------"
+echo "Start of Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# The upload directory is always derived from responsibility 
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+v_upload_dir=`eval echo "${5}"`
+filetype=GL_EXTRACT
+date=`date +%Y%m%d`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Environment        =  ${l_env}"
+#
+filedate=`date '+%C%y%m%d%H%M%S'`
+#
+requestid=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+FROM fnd_concurrent_requests fcr,
+     fnd_concurrent_programs fcp,
+     fnd_concurrent_programs_tl fcpt
+WHERE fcp.concurrent_program_id = fcr.concurrent_program_id
+  AND fcp.application_id = fcr.program_application_id
+  AND fcpt.concurrent_program_id = fcp.concurrent_program_id
+  AND fcpt.application_id = fcp.application_id
+  AND fcpt.language = USERENV('LANG')
+  AND fcp.concurrent_program_name = 'XXRSGLBL'
+  AND fcr.parent_request_id IN (SELECT fcr_sibling.request_id
+                                FROM fnd_concurrent_requests fcr_sibling
+                                WHERE fcr_sibling.parent_request_id = (SELECT fcr_parent.parent_request_id
+                                                                       FROM fnd_concurrent_requests fcr_parent
+                                                                       WHERE fcr_parent.request_id = (SELECT fcr_current.parent_request_id
+                                                                                                      FROM fnd_concurrent_requests fcr_current
+                                                                                                      WHERE fcr_current.request_id = $4
+                                                                                                     )
+                                                                      )
+                               )
+;
+EXIT;
+EOF`
+#
+  requestid=`echo ${requestid}|tr -s "" " "`
+#
+  echo " "
+  echo 'Request ID of Blackline Outbound FILE: ' ${requestid}
+  echo " "
+#
+  filename=`echo ${filetype}_${filedate}_${requestid}|tr '[A-Z]' '[a-z]'|tr -s "" " "`
+#
+# -----------------------------------------------------------------------------------------
+# Keep files in $V_UPLOAD_DIR for a day and cleanup the directory. This is required before the if 
+# condition in order to avoid any confusion in getting the output file.
+#
+# Check the output directory to find if the report is generated.
+# if yes, then copy the output file to the $UPLOAD_DIR
+# -----------------------------------------------------------------------------------------
+#
+  find ${v_upload_dir}/ -ctime +0 -name 'gl_extract*.*' -exec rm {} \;
+# 
+  if [ -f ${APPLCSF}/${APPLOUT}/o${requestid}.out ]; then
+#    
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/o${requestid}.out >> ${v_upload_dir}/${filename}.txt
+# -----------------------------------------------------------------------------------------
+# copy extract file to Blackline server using SFTP 
+# copy only if instance is PRD otherwise do not copy file to PRD  
+# -----------------------------------------------------------------------------------------
+if [ $l_env = "PRD" ]; then 
+cd ${v_upload_dir}
+sftp rackspace@ftp.blackline.com << EOF_FTP
+put ${filename}.txt
+exit
+EOF_FTP
+else
+echo 'SFTP file transfer is not enabled in this environment' 
+fi
+
+#
+#
+# -----------------------------------------------------------------------------------------
+# Copy the file from the output directory to Archive directory and then
+# encrypt and zip the file
+# -----------------------------------------------------------------------------------------
+#
+    cp ${v_upload_dir}/${filename}.txt ${XXRS_TOP}/archive/blackline/
+    gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/blackline/${filename}.txt
+    gzip ${XXRS_TOP}/archive/blackline/${filename}.txt.gpg
+# 
+# -----------------------------------------------------------------------------------------
+# Remove the original file from the archive directory
+# -----------------------------------------------------------------------------------------
+#
+    rm -f $XXRS_TOP/archive/blackline/${filename}.txt
+#
+# -----------------------------------------------------------------------------------------
+# gzip archive/blackline/${filename}.txt.gpg
+# -----------------------------------------------------------------------------------------
+#
+    find ${XXRS_TOP}/archive/blackline/ -ctime +120 -name '*gpg*gz' -exec rm {} \;
+#
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file ${filename} is located at "${v_upload_dir}
+    echo " "
+#
+    echo "---------------------------------------------------------------------------------"
+    echo "File Transferred Successfully"
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+#
+  else
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file generated by concurrent program is not found."
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+  exit 1 
+  fi

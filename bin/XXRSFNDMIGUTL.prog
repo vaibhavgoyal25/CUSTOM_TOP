@@ -1,0 +1,36 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSFNDMIGUTL.prog                                                                              *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace Migration Utility.                                                             *
+# *                                                                                                        *
+# * AUTHOR       : Vaibhav Goyal                                                                           *
+# * DATE WRITTEN : 10-Jul-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#  | REF#         | WHO             |   DATE      | REMARKS                                         *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0 | XXXXXX-XXXXX | Vaibhav Goyal   | 10-Jul-2012 | Initial build                                   *
+# *********************************************************************************************************/
+echo "-----------------------------------------------------------------------"
+echo "Start of Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# The upload directory is always derived from responsibility 
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+p_file_name=$5
+p_jdbc_string=$6
+p_xxrs_password=$7
+date=`date +%Y%m%d`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+
+cd /tmp/${TWO_TASK}
+
+sh ${p_file_name} $1 ${p_jdbc_string} ${p_xxrs_password}

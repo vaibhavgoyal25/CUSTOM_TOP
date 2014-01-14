@@ -1,0 +1,161 @@
+#!/bin/sh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRS_INBOUND_OUTBOUND_CC.prog                                                                   *
+# *                                                                                                        *
+# * DESCRIPTION : ChasePaymentech Credit Card outbound extract and archiv process                          *
+# *                                                                                                        *
+# * AUTHOR       : Abhay Patil                                                                             *
+# * DATE WRITTEN : 23-JUL-2010                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |        REF#        |         WHO         |      DATE     |                REMARKS            *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    100611-02073    |   Abhay Patil       |  23-JUL-2010  | Initial Creation                  *
+# *         |                    |                     |               |   Based on common utility for     *
+# *         |                    |                     |               |   Inbound/Outbound process        *
+# *         |                    |                     |               |   XXRS_INBOUND_OUTBOUND.prog      *
+# **********************************************************************************************************/
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of Inbound/Outbound script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Assumption: The upload directory is always under $UPLOAD_DIR
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=${1}
+p_user_id=${2}
+p_user_name=${3}
+p_conc_request_id=${4}
+p_file_name=${5}
+p_load_type=${6}
+p_concurrent_short_name=${7}
+p_upload_dir=`eval echo "${8}"`
+p_archive_dir=`eval echo "${9}"`
+p_ctl_file=${10}
+p_delimiter=${11}
+p_delimiter_count=${12}
+p_curr_code=${13}
+p_org_id=${14}
+datetime=`date +%Y%m%d%H%M%S`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id               =  ${p_user_id}"
+echo "User Name             =  ${p_user_name}"
+echo "Request ID            =  ${p_conc_request_id}"
+echo "Input File Name       =  ${p_file_name}.csv"
+echo "Load Type             =  ${p_load_type}"
+echo "Concurrent Short Name =  ${p_concurrent_short_name}"
+echo "Upload Directory      =  ${p_upload_dir}"
+echo "Archive Directory     =  ${p_archive_dir}"
+echo "Control File          =  ${p_ctl_file}"
+echo "Delimiter             =  ${p_delimiter}"
+echo "No. of Delimiters     =  ${p_delimiter_count}"
+echo "Currency              =  ${p_curr_code}"
+echo "Org ID                =  ${p_org_id}"
+#
+
+if [ ${p_load_type} = OUTBOUND ]; then
+#
+   echo "----------------------------------------------------------------------------"
+   echo "Running the OUTBOUND process to archive the output to "${p_upload_dir}
+   echo "----------------------------------------------------------------------------"
+   echo " " 
+#
+v_request_id=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+FROM fnd_concurrent_requests fcr,
+     fnd_concurrent_programs fcp,
+     fnd_concurrent_programs_tl fcpt
+WHERE fcp.concurrent_program_id = fcr.concurrent_program_id
+  AND fcp.application_id = fcr.program_application_id
+  AND fcpt.concurrent_program_id = fcp.concurrent_program_id
+  AND fcpt.application_id = fcp.application_id
+  AND fcpt.language = USERENV('LANG')
+  AND fcp.concurrent_program_name = '$p_concurrent_short_name'
+  AND fcr.parent_request_id IN (SELECT fcr_sibling.request_id
+                                FROM fnd_concurrent_requests fcr_sibling
+                                WHERE fcr_sibling.parent_request_id = (SELECT fcr_parent.parent_request_id
+                                                                       FROM fnd_concurrent_requests fcr_parent
+                                                                       WHERE fcr_parent.request_id = (SELECT fcr_current.parent_request_id
+                                                                                                      FROM fnd_concurrent_requests fcr_current
+                                                                                                      WHERE fcr_current.request_id = $p_conc_request_id
+                                                                                                     )
+                                                                      )
+                               )
+;
+EXIT;
+EOF`
+
+#
+# -----------------------------------------------------------------------------------------
+# Triming the request id that was received from the SQL statement and getting the output
+# from the $APPLCSF/$APPLOUT and archiving it in the p_upload_dir
+# -----------------------------------------------------------------------------------------
+#
+set -x
+   v_request_id=`echo ${v_request_id}|tr -s "" " "`
+   echo "Output of the request ${v_request_id} need to be moved. "
+   echo " "
+set +x
+
+v_chaseid=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT flv.meaning meaning
+FROM fnd_lookup_values flv
+WHERE flv.lookup_type = 'XXRS_AR_CC_CHASE_ID'
+  AND flv.lookup_code = '${p_org_id}'
+;
+EXIT;
+EOF`
+set -x
+
+v_chaseid=`echo ${v_chaseid}|tr '[a-z]' '[A-Z]'|tr -s "" " "`
+
+echo 'CHASE ID: ' ${v_chaseid}
+
+v_filename=`echo ${p_file_name}_${p_curr_code}_${v_request_id}_${datetime}|tr '[A-Z]' '[a-z]'|tr -s "" " "`
+v_recordcount=`wc -l ${APPLCSF}/${APPLOUT}/o${v_request_id}.out|cut -d' ' -f1,1`
+
+echo 'FILE NAME: ' ${v_filename}.csv
+echo 'RECORDS: ' ${v_recordcount}
+
+echo "H,1,2_1_0,${v_chaseid},${v_filename},${v_recordcount}" > ${p_upload_dir}/${v_filename}.csv
+cat ${APPLCSF}/${APPLOUT}/o${v_request_id}.out >> ${p_upload_dir}/${v_filename}.csv
+echo "T,1" >> ${p_upload_dir}/${v_filename}.csv
+
+cp -f ${p_upload_dir}/${v_filename}.csv ${p_archive_dir}/${v_filename}.csv
+gpg -e --default-recipient 'OracleDBA' ${p_archive_dir}/${v_filename}.csv
+gzip ${p_archive_dir}/${v_filename}.csv.gpg
+rm ${p_archive_dir}/${v_filename}.csv
+find ${p_archive_dir}/ -ctime +90 -name *${p_org_id}*${p_curr_code}*gpg*gz -exec rm {} \;
+
+echo "Requested file is located at ${p_upload_dir}/${v_filename}.csv" > $APPLCSF/$APPLOUT/o${v_request_id}.out
+echo "Requested file is located at ${p_upload_dir}/${v_filename}.csv"
+echo "File archived under ${p_archive_dir} directory."
+
+   echo "-----------------------------------------------------------------------"
+   echo "Outbound process completed SUCCESSFULLY"
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if load_type is unknown implying 
+# that the value set configurations in Oracle is incorrect.
+# ---------------------------------------------------------------------------
+#
+else
+   echo "Error :: Unknown load type setting. "
+   echo "Please contact technical support."
+   echo " " 
+   exit 1
+fi
+#
+exit

@@ -1,0 +1,498 @@
+export PATH=$PATH:/bin/ksh
+#!/bin/ksh
+# ---------------------------- CONFIDENTIAL ---------------------------------
+# This file contains proprietary information of Rackspace Inc. (RSI) and is
+# tendered subject to the condition that no copy or other reproduction be
+# made, in whole or in part, and that no use be made of the information
+# herein except for the purpose for which it is transmitted without express
+# written permission of RSI.
+# ---------------------------------------------------------------------------
+#  MODULE       : XXRSSCUSGDIMP.prog
+#  VERSION      : 1.0.0
+#  SCRIPT NAME  : XXRSSCUSGDIMP
+#
+#  DESCRIPTION: This shell script is used to load service contract usage 
+#               data into the service contract usage staging table for 
+#               processing into the AR open interfaces tables as needed.
+#               The process steps are as follows:
+#
+#               1).  Users receive usage files and edit as needed for content.
+#               2).  User put file into CSV format as per template.
+#               3).  Users name file according to standard.
+#               4).  Users put file into usage data directory for processing.
+#               5).  User run this concurrent process to load the data into 
+#                    the usage data staging table.
+#               6).  Upon successfull completion the file is moved into the 
+#                    archive directory for audit compliance. 
+#
+#               File naming format is as follows:
+#
+#               TT_YYYY_MM_DD.csv     where;
+#
+#               TT = The data type as follows:
+#
+#                   TS = Tech-Support
+#                   MB = Managed Backup
+#                   ME = Managed Exchange
+#                   BW = Bandwidth
+#                   VM = Virtual Machine
+#                   AB = Aggregate Bandwidth
+#                   CB = Consolidated Billing
+#
+#               YYYY = 4 digit year
+#               MM   = 2 digit month
+#               DD   = 2 digit day
+#
+#               Note the data types above are going to be used for the usage
+#               data type argument below.
+#
+#               There are two processing options that have been added.  The
+#               options are listed below along with a brief description:
+#
+#               Validate Only - This option is used to validate the usage
+#                               file data.  The data is temporarily loaded
+#                               into the usage staging table for validation
+#                               & then is immediately unloaded.  This option
+#                               is designed for iterative file checking and
+#                               does not assign any usage ids.
+#
+#               Usage Import  - This option is used to process the usage
+#                               file data into the usage staging table for
+#                               further processing with the billing engine.
+#                               This option is not used for iterative
+#                               processing of the data for validation puposes.
+#                               Usage id's are assigned in this option and 
+#                               the data persists in the staging table.
+#
+# ---------------------------------------------------------------------------
+# VERSION  DATE      NAME               DESCRIPTION
+# -------  --------  -----------------  -------------------------------------
+# 1.0.0    08/22/07  Matt Paine         Created.
+# 1.1.0    04/22/08  Matt Paine         Modified software to handle a single
+#                                       input file format.
+# 1.2.0    07/06/09  Vinodh Bhasker     As per 090811-06887# 
+#                                       Added new usage type for consolidated
+#                                       billing.
+# 1.3.0    08/17/10 Pavan Amirineni     As per ticket # 100811-04153, maded changes 
+#                                       to read data file from ftp
+# 2.0.0	   02/20/12 Pavan Amirineni     As per ticket #111122-02448 R12 Changes
+# ---------------------------------------------------------------------------
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of Usage Data Upload Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ---------------------------------------------------------------------------
+# Get the parameters from Oracle concurrent program and assign them to some
+# internal shell variables.  Echo the variables back out to the system for
+# log capture.
+# ---------------------------------------------------------------------------
+#
+pi_apps_usrn_pwd=$1
+pi_user_id=$2
+pi_user_name=$3
+pi_conc_request_id=$4
+pi_usage_data_type=$5
+pi_billing_period=$6
+pi_file_name=$7
+pi_process_opts=$8
+pi_reverse_flag=$9
+# 100811-04153 added upload dir parameter
+pi_upload_dir=`eval echo "${10}"`
+#
+# debug flag = TRUE or FALSE
+#
+pi_debug_flg=FALSE
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id            =  ${pi_user_id}"
+echo "User Name          =  ${pi_user_name}"
+echo "Request ID         =  ${pi_conc_request_id}"
+echo "Usage Data Type    =  ${pi_usage_data_type}"
+echo "Billing Period     =  ${pi_billing_period}" 
+echo "Input File Name    =  ${pi_file_name}.csv"
+echo "Processing Options =  ${pi_process_opts}"    
+echo "Reverse Flag       =  ${pi_reverse_flag}"
+echo "Upload Directory   =  ${pi_upload_dir}"  
+#
+# ---------------------------------------------------------------------------
+# If the process options is "Validate Only", then report that the reverse
+# flag will be ignored. If the reverse flag is set to "Yes" then report that
+# the process options will be ignored.
+# ---------------------------------------------------------------------------
+#
+if [ "${pi_reverse_flag}" = Y ]; then
+   echo " "
+   echo "Note that the process option is ignored if the reverse flag "
+   echo "is Yes. "
+
+else
+   if [ "${pi_process_opts}" = "Validate Only" ]; then
+      echo " "
+      echo "Note that the reverse flag option is ignored if the process option "
+      echo "is Validate Only. "
+   fi
+fi
+#
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ---------------------------------------------------------------------------
+# Check to see if this a normal load or a reverse load.  If so then check
+# to see if the file has already been processed by checking the archive 
+# directory to see if the file exists in the directory. If we already have
+# run the unload then delete the previous file so that we keep the processed
+# data check in synch. An warning message is issued if the validate only
+# process is present. 
+# ---------------------------------------------------------------------------
+#
+test_file_load=${XXRS_TOP}/archive/usage_data/${pi_file_name}_N.dat
+test_file_unload=${XXRS_TOP}/archive/usage_data/${pi_file_name}_Y.dat
+#
+if [ -f $test_file_load ]; then
+   load_file=`ls  ${XXRS_TOP}/archive/usage_data/${pi_file_name}_*_N* | wc -l`
+else
+   load_file=0
+fi
+#
+if [ -f $test_file_unload ]; then
+   unload_file=`ls ${XXRS_TOP}/archive/usage_data/${pi_file_name}_*_Y* | wc -l`
+else
+   unload_file=0
+fi
+#
+if [ ${pi_reverse_flag} = N ]; then
+#
+   if [ ${load_file} != ${unload_file} ]; then
+#
+      if [ "${pi_process_opts}" = "Validate Only" ]; then
+         echo "Warning :: File already processed, found in archive directory."
+         echo " "
+      else
+         echo "Error :: File already processed, found in archive directory."
+         echo " "
+         exit 1
+      fi
+#
+   fi
+#
+# ---------------------------------------------------------------------------
+# If a normal load (Usage Import), the file is copied to /mnt/mntupload on
+# the apps server for instance.  Move the data file to the target directory 
+# under {XXRS_TOP}/data.  Remove any existing files that may already be there.
+# ---------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Moving usage data file to Oracle directory for processing."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+#  if [ -f /mnt/mntupload/${pi_file_name}.csv  ]; then
+   # 100811-04153 as per ticket chaged upload dir from mnt 
+   if [ -f ${pi_upload_dir}/${pi_file_name}.csv  ]; then
+#
+      if [ -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv.dos ]; then
+         rm -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv.dos 
+      fi
+# 100811-04153 as per ticket, chaged upload dir from mnt 
+      cp -p ${pi_upload_dir}/${pi_file_name}.csv ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv.dos
+      wait
+      dos2unix -n ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv.dos ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv
+#
+   else 
+      echo "Error :: File not found in staging directory. Please check your file"
+      echo "name and if the file exists in the staging directory."
+      echo " "
+      exit 1
+   fi
+#
+# ---------------------------------------------------------------------------
+# Check to see if the file has been moved and if it exist in the targeted
+# Oracle directory.  If so then proceed forward.  If not then issue an
+# error message and exit.
+# ---------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Checking Move process to see if file arrived at target Oracle directory."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+   if [ -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat ]; then
+      rm -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat
+   fi
+#
+   if [ -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv ]; then
+#
+      echo "Move was succesful. ${pi_file_name}.csv loaded on to UNIX box under"
+      echo "${XXRS_TOP}/data directory."
+      echo " "
+#
+# ---------------------------------------------------------------------------
+# Append the concurrent request id, the file name, & the data type as an 
+# additional column at the end of each record in the datafile to allow a 
+# rollback to occur if there are any error records.
+# 090811-06887# For consolidated cloud billing project
+# Added additional code to append additional commas for other than CB datatype 
+# future_col_10 = Amount To Bill, future_col_11 = Currency Code since other
+# data type usage file wouldn't have these columns populated.
+# ---------------------------------------------------------------------------
+#
+      if [ "${pi_usage_data_type}" != "CB" ]; then
+#
+        echo "-----------------------------------------------------------------------"
+        echo "Adding additional commas if the data type is not CB."
+        echo "For future_col_10 = Amount To Bill, future_col_11 = Currency Code."
+        echo "-----------------------------------------------------------------------"
+        echo " "
+#
+        cat ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv | sed 's/$'"/`echo ',,'`/" > ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat3
+#        
+        echo "-----------------------------------------------------------------------"
+        echo "Adding concurrent request id to each data record for error handling."
+        echo "-----------------------------------------------------------------------"
+        echo " "
+#
+        cat ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat3 | sed 's/$'"/`echo ','${pi_conc_request_id}`/" > ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat1
+#
+        rm ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat3
+#
+      else
+#
+        echo "-----------------------------------------------------------------------"
+        echo "Adding concurrent request id to each data record for error handling."
+        echo "-----------------------------------------------------------------------"
+        echo " "
+#
+        cat ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv | sed 's/$'"/`echo ','${pi_conc_request_id}`/" > ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat1
+#
+      fi
+#
+# ----------------------------------------------------------------------------------
+# 090811-06887# End of code change
+# ----------------------------------------------------------------------------------
+#
+      echo "-----------------------------------------------------------------------"
+      echo "Adding the file name to each data record for error handling."
+      echo "-----------------------------------------------------------------------"
+      echo " "
+#
+      cat ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat1 | sed 's/$'"/`echo ','${pi_file_name}.csv`/" > ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat2
+#
+      echo "-----------------------------------------------------------------------"
+      echo "Adding the usage data type to each data record for error handling."
+      echo "-----------------------------------------------------------------------"
+      echo " "
+#
+      cat ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat2 | sed 's/$'"/`echo ','${pi_usage_data_type}`/" > ${XXRS_TOP}/data//usage_data/${pi_file_name}.dat
+#
+      rm ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat1 ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat2
+#
+# ---------------------------------------------------------------------------
+# Clean up the log directory that houses the log, bad, and discard files 
+# that SQL Loader produces.
+# ---------------------------------------------------------------------------
+#
+      echo "-----------------------------------------------------------------------"
+      echo "Remove old .log, .bad, and .dsc SQL Loader files from directory."
+      echo "-----------------------------------------------------------------------"
+      echo " "
+#
+      if [ -f ${XXRS_TOP}/log/${pi_file_name}.log ]; then
+         rm ${XXRS_TOP}/log/${pi_file_name}.log
+      fi
+#
+      if [ -f ${XXRS_TOP}/log/${pi_file_name}.bad ]; then
+         rm ${XXRS_TOP}/log/${pi_file_name}.bad
+      fi
+#
+      if [ -f ${XXRS_TOP}/log/${pi_file_name}.dsc ]; then
+         rm ${XXRS_TOP}/log/${pi_file_name}.dsc
+      fi
+#
+# ---------------------------------------------------------------------------
+# Set loader script name to the proper name depending upon the usage data
+# being entered into the system.
+# 04-22-2008 We used to have multiple controls file now we only have one
+# since the formats were consolidated.  Left section here is case there is
+# a need for multiple control files again.
+# ---------------------------------------------------------------------------
+#
+      ctl_file=XXRS_SC_USAGE_DATA_0001
+#
+# ---------------------------------------------------------------------------
+# Initiate the SQL Loader command so that the usage data file can be loaded
+# into the usage data table for processing during the billing cycle.
+# ---------------------------------------------------------------------------
+#
+      echo "-----------------------------------------------------------------------"
+      echo "Running SQL Loader process."
+      echo "-----------------------------------------------------------------------"
+      echo " " 
+#          
+#     changed ctl_file location from ctl directory to bin as per standards
+#
+      sqlldr userid=${pi_apps_usrn_pwd} data=${XXRS_TOP}/data/usage_data/${pi_file_name}.dat \
+                                     control=${XXRS_TOP}/bin/${ctl_file}.ctl \
+                                         log=${XXRS_TOP}/log/${pi_file_name}.log \
+                                         bad=${XXRS_TOP}/log/${pi_file_name}.bad \
+                                     discard=${XXRS_TOP}/log/${pi_file_name}.dsc \
+                                      errors=0 \
+                                  discardmax=1
+      return_status=$?
+      wait
+#
+# ---------------------------------------------------------------------------
+# Check the return status of the SQL Loader command.  If there are any 
+# errors, warnings, fatal, or unknown errors, then rollback all the changes 
+# in the Unload script and remove the usage data file. If all the rows in 
+# the datafile are loaded successfully, then move the processed file to the 
+# archive directory for auditing purposes both in the network drive and on 
+# the Oracle side.  If the process opts is validate only then we need to
+# unload the data from the staging table.  This process will be launched
+# from the audit script automatically.
+# ---------------------------------------------------------------------------
+#
+      echo "Checking the SQL Loader status."
+      echo " " 
+#
+      case ${return_status} in
+        0) echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded." 
+           echo " " 
+           loader_status=SUCCESS;;      
+#
+        1) echo "SQL*Loader execution exited with FAILURE, see logfile." 
+           echo " " 
+           loader_status=FAIL;;
+#
+        2) echo "SQL*Loader execution exited with WARNING, see logfile."
+           echo " " 
+           loader_status=WARNING;;
+#
+        3) echo "SQL*Loader execution encountered a FATAL ERROR."
+           echo " " 
+           loader_status=FATAL;;
+#
+        *) echo "UNKNOWN return code."
+           echo " " 
+           loader_status=UNKNOWN;;
+#
+      esac
+#
+      if [ ${loader_status} = SUCCESS ]; then
+
+         if [ "${pi_process_opts}" = "Usage Import" ]; then
+# 100811-04153 as per ticket chaged upload dir from mnt 
+            rm -f ${pi_upload_dir}/${pi_file_name}.csv
+            mv -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.dat \
+                  ${XXRS_TOP}/archive/usage_data/${pi_file_name}'_'${pi_conc_request_id}'_'${pi_reverse_flag}.dat
+            touch ${XXRS_TOP}/archive/usage_data/${pi_file_name}'_'${pi_reverse_flag}.dat
+            wait
+         fi
+      fi
+#
+#
+      sqlplus -s ${pi_apps_usrn_pwd} \
+              @${XXRS_TOP}/sql/XXRS_SC_USAGE_DATA_AUDIT_0001.sql \
+              ${pi_debug_flg} \
+              ${loader_status} \
+              ${pi_billing_period} \
+              ${pi_conc_request_id} \
+              ${pi_file_name}.csv \
+              \'${pi_process_opts}\' \
+              ${pi_user_id}
+#
+      return_status=$?
+      wait
+#
+      if [ ${return_status} -ne 0 ]; then
+#
+         if [ ${return_status} -eq 8 ]; then
+            echo "Error :: Audit update failed.  Please contact technical support."
+         else
+            if [ "${pi_process_opts}" = "Validate Only" ]; then
+               echo "Audit Script execution SUCCESSFUL.  Data successfully unloaded."
+            else
+               echo "Audit Script execution SUCCESSFUL.  Data file loaded was archived."
+            fi
+#
+            echo " "
+            echo "Warning :: Usage file data errors."
+         fi
+#
+         echo " " 
+         exit 1
+#
+      else
+         rm -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv.dos
+         rm -f ${XXRS_TOP}/data/usage_data/${pi_file_name}.csv 
+      fi
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if usage data file is not FTPed to target
+# Oracle directory.
+# ---------------------------------------------------------------------------
+#
+   else 
+      echo "Error :: File not found. Please check your file name."
+      echo " "
+      exit 1
+   fi
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if reverse flag is set to Y (yes) and the
+# user wants to unload a previously loaded file of data from the usage
+# data table.
+# ---------------------------------------------------------------------------
+#
+elif [ ${pi_reverse_flag} = Y ]; then
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Running SQL Unload script."
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+   sqlplus -s ${pi_apps_usrn_pwd} \
+           @${XXRS_TOP}/sql/XXRS_SC_USAGE_DATA_UNLOAD_0001.sql \
+            ${pi_debug_flg} \
+            ${pi_usage_data_type} \
+            ${pi_billing_period} \
+            ${pi_file_name}.csv
+#
+   return_status=$?
+   wait
+#
+   if [ ${return_status} -ne 0 ]; then
+#
+      if [ ${return_status} -eq 8 ]; then
+         echo "Error :: Unload failed.  Please contact technical support."
+         echo " " 
+         exit 1
+      elif [ ${return_status} -eq 2 ]; then
+         echo "Unload Script execution SUCCESSFUL.  Partially processed records archived." 
+         echo " " 
+      fi
+#
+   else
+      echo "Unload Script execution SUCCESSFUL.  Archiving data file unloaded." 
+      echo " " 
+      touch ${XXRS_TOP}/archive/usage_data/${pi_file_name}'_'${pi_conc_request_id}'_'${pi_reverse_flag}.dat
+      touch ${XXRS_TOP}/archive/usage_data/${pi_file_name}'_'${pi_reverse_flag}.dat
+      wait
+   fi
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if reverse flag value is unknown implying 
+# that the value set configurations in Oracle are incorrect.
+# ---------------------------------------------------------------------------
+#
+else
+   echo "Error :: Unknown reverse flag setting.  Setups are incorrect.  "
+   echo "Please contact technical support."
+   echo " " 
+   exit 1
+fi
+#
+exit

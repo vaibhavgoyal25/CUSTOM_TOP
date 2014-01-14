@@ -1,0 +1,481 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRS_INBOUND_OUTBOUND.sh                                                                        *
+# *                                                                                                        *
+# * DESCRIPTION : Common utility shell script for SQL Loader and archiving files.                          *
+# *                                                                                                        *
+# * AUTHOR       : Druhil Parikh                                                                           *
+# * DATE WRITTEN : 18-NOV-2011                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |        REF#        |         WHO         |      DATE     |                REMARKS            *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    111122-02448    |   Druhil Parikh     |  18-NOV-2011  | Initial Creation                  *
+# * 1.0.1   |    131205-10395    |   Vaibhav Goyal     |  30-DEC-2013  | Corrected code to process etext   *
+# *         |                    |                     |               | output.                           *
+# *                                                                                                        *
+# **********************************************************************************************************/
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of Inbound/Outbound script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Assumption: The upload directory is always under $UPLOAD_DIR
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=${1}
+p_user_id=${2}
+p_user_name=${3}
+p_conc_request_id=${4}
+p_file_name=${5}
+p_load_type=${6}
+p_concurrent_short_name=${7}
+p_upload_dir=`eval echo "${8}"`
+p_archive_dir=${9}
+p_ctl_file=${10}
+p_delimiter=${11}
+p_delimiter_count=${12}
+p_delimiter_yesno=${13}
+datetime=`date +%Y%m%d%H%M%S`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id               =  ${p_user_id}"
+echo "User Name             =  ${p_user_name}"
+echo "Request ID            =  ${p_conc_request_id}"
+echo "Input File Name       =  ${p_file_name}.csv"
+echo "Load Type             =  ${p_load_type}"
+echo "Concurrent Short Name =  ${p_concurrent_short_name}"
+echo "Upload Directory      =  ${p_upload_dir}"
+echo "Archive Directory     =  ${p_archive_dir}"
+echo "Control File          =  ${p_ctl_file}"
+echo "Delimiter             =  ${p_delimiter}"
+echo "No. of Delimiters     =  ${p_delimiter_count}"
+echo "Delimiter Yes/No:     =  ${p_delimiter_yesno}"
+#
+# ---------------------------------------------------------------------------
+# Check to see if this a inbound process.  If so then check
+# to see if the file has already been processed by checking the archive 
+# directory to see if the file exists in the directory. If we already have
+# run the same file report error.
+# ---------------------------------------------------------------------------
+#
+if [ ${p_load_type} = INBOUND ]; then
+#
+   archive_file=${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_*.gz
+#
+   if [ -f $archive_file ]; then
+      load_file=`ls  ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_*.gz | wc -l`
+   else
+      load_file=0
+   fi
+#
+   if [ ${load_file} -ge 1 ]; then
+# 
+     echo " "
+     echo "-----------------------------------------------------------------------"
+     echo "Error :: File already processed, found in archive directory."
+     echo " "
+     exit 1
+#
+   fi
+#
+# -------------------------------------------------------------------------------------
+# Move the data file from upload_dir to the $XXRS_TOP/data/${p_data_dir} and remove
+# any file that might already exist there.
+# -------------------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Moving data file to Oracle directory for processing."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+   if [ -f ${p_upload_dir}/${p_file_name}.csv  ]; then
+#
+      if [ -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv.dos ]; then
+         rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv.dos 
+      fi
+#
+      cp -p ${p_upload_dir}/${p_file_name}.csv ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv.dos
+      wait
+      dos2unix -n ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv.dos ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv
+#
+      if [ -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv.dos ]; then
+         rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv.dos 
+      fi
+#
+   else
+      echo " "
+      echo "-----------------------------------------------------------------------" 
+      echo "Error :: File not found in staging directory. Please check your file"
+      echo "name and if the file exists in the staging directory."
+      echo " "
+      exit 1
+   fi
+#
+# ----------------------------------------------------------------------------
+# Check if the files have specified number of commas. Need to report if there
+# are less or more number of commas in any of the input row.
+# ----------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Checking the file format for number of delimiters."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+   echo "Checking if the Delimiter is Yes or No"
+   echo "Delimiter Yes/No:"    =  ${p_delimiter_yesno}
+   if [ ${p_delimiter_yesno} = "Y" ]; then
+       echo "Delimiter Yes/No:"    =  ${p_delimiter_yesno}
+#
+       v_error_lines=`awk -F ${p_delimiter} 'NF<'${p_delimiter_count}'||NF>'${p_delimiter_count} ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv|tr -s "" " "`
+       v_length=`echo ${v_error_lines} | wc -c`
+#
+       if [ ${v_length} -gt 1 ]; then
+         echo " "
+         echo "------------------------------------------------------------------------" 
+         echo "Error :: File has incorrect number of delimiters in the following lines."
+         echo ${v_error_lines}
+         echo " "
+         exit 1
+       fi
+#
+    fi
+# ---------------------------------------------------------------------------
+# Append the concurrent request id to allow a rollback to occur 
+# if there are any error records. Renaming the file back to *.csv
+# ---------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Adding concurrent request id to each data record for rolling back."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+   cat ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv | sed 's/$'"/`echo ${p_delimiter}${p_conc_request_id}${p_delimiter}${p_user_id}`/" > ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.dat
+#
+   rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv
+   cp -p ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.dat ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv
+   rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.dat
+#
+# ---------------------------------------------------------------------------
+# Clean up the log directory that houses the log, bad, and discard files 
+# that SQL Loader produces.
+# ---------------------------------------------------------------------------
+#
+      echo "-----------------------------------------------------------------------"
+      echo "Remove old .log, .bad, and .dsc SQL Loader files from directory."
+      echo "-----------------------------------------------------------------------"
+      echo " "
+#
+      if [ -f ${XXRS_TOP}/log/${p_file_name}.log ]; then
+         rm ${XXRS_TOP}/log/${p_file_name}.log
+      fi
+#
+      if [ -f ${XXRS_TOP}/log/${p_file_name}.bad ]; then
+         rm ${XXRS_TOP}/log/${p_file_name}.bad
+      fi
+#
+      if [ -f ${XXRS_TOP}/log/${p_file_name}.dsc ]; then
+         rm ${XXRS_TOP}/log/${p_file_name}.dsc
+      fi
+#
+# ----------------------------------------------------------------------------
+# Call the SQL Loader to load the data into the invoice worksheet table
+# ----------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Running SQL Loader process."
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+
+# 100408-04536:changed error to zero in sqlldr so that it will not load if it founds any error
+#
+   sqlldr userid=${p_apps_usrn_pwd} data=${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv \
+                                 control=${XXRS_TOP}/bin/${p_ctl_file}.ctl \
+                                     log=${XXRS_TOP}/log/${p_file_name}.log \
+                                     bad=${XXRS_TOP}/log/${p_file_name}.bad \
+                                 discard=${XXRS_TOP}/log/${p_file_name}.dsc \
+                                  errors=0 \
+                              discardmax=1
+   return_status=$?
+   wait
+#
+# ---------------------------------------------------------------------------
+# Check the return status of the SQL Loader command.  If there are any 
+# errors, warnings, fatal, or unknown errors, then rollback all the changes 
+# in the Unload script and remove the usage data file. If all the rows in 
+# the datafile are loaded successfully, then move the processed file to the 
+# archive directory for auditing purposes both in the network drive and on 
+# the Oracle side.  If the process opts is validate only then we need to
+# unload the data from the staging table.  This process will be launched
+# from the audit script automatically.
+# ---------------------------------------------------------------------------
+#
+   echo " " 
+   echo "Checking the SQL Loader status."
+   echo " " 
+#
+   case ${return_status} in
+      0) echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded." 
+         echo " "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " " 
+         loader_status=SUCCESS;;      
+#
+      1) echo "SQL*Loader execution exited with FAILURE, see logfile."
+         echo " " 
+         loader_status=FAIL
+         if [ -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------" 
+         exit 1;;
+#
+      2) echo "SQL*Loader execution exited with WARNING, see logfile."
+         echo " " 
+         loader_status=WARNING
+         if [ -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+      3) echo "SQL*Loader execution encountered a FATAL ERROR."
+         echo " " 
+         loader_status=FATAL
+         if [ -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+      *) echo "UNKNOWN return code."
+         echo " " 
+         loader_status=UNKNOWN
+         if [ -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+   esac
+#
+# ----------------------------------------------------------------------------
+# If the loader return status is sucessful archive the file loaded and also
+# remove any file older than 90 days from the archive directory 
+# ----------------------------------------------------------------------------
+#
+   if [ ${loader_status} = SUCCESS ]; then
+#
+     echo " "
+     echo "Archiving data file."
+     echo " "
+#
+     rm -f ${p_upload_dir}/${p_file_name}.csv
+     mv -f ${XXRS_TOP}/data/${p_archive_dir}/${p_file_name}.csv \
+           ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     gzip ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat.gpg
+     rm -f ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     wait
+   fi
+   find ${XXRS_TOP}/archive/${p_archive_dir}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Inbound process completed SUCCESSFULLY"
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+# -------------------------------------------------------------------------------
+# Part of if block that gets executed if the load type was selected as OUTBOUND.
+# Need to tie this program as part of the request set whoes output needs to be
+# archived into the upload directory. Also, need to set the concurrent program
+# short name as the parameter for this program so, the SQL in this section could
+# retrieve the request id.
+# -------------------------------------------------------------------------------
+#
+elif [ ${p_load_type} = OUTBOUND ]; then
+#
+   echo "----------------------------------------------------------------------------"
+   echo "Running the OUTBOUND process to archive the output to "${p_upload_dir}
+   echo "----------------------------------------------------------------------------"
+   echo " " 
+#
+v_request_id=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+FROM fnd_concurrent_requests fcr,
+     fnd_concurrent_programs fcp,
+     fnd_concurrent_programs_tl fcpt
+WHERE fcp.concurrent_program_id = fcr.concurrent_program_id
+  AND fcp.application_id = fcr.program_application_id
+  AND fcpt.concurrent_program_id = fcp.concurrent_program_id
+  AND fcpt.application_id = fcp.application_id
+  AND fcpt.language = USERENV('LANG')
+  AND fcp.concurrent_program_name = '$p_concurrent_short_name'
+  AND fcr.parent_request_id IN (SELECT fcr_sibling.request_id
+                                FROM fnd_concurrent_requests fcr_sibling
+                                WHERE fcr_sibling.parent_request_id = (SELECT fcr_parent.parent_request_id
+                                                                       FROM fnd_concurrent_requests fcr_parent
+                                                                       WHERE fcr_parent.request_id = (SELECT fcr_current.parent_request_id
+                                                                                                      FROM fnd_concurrent_requests fcr_current
+                                                                                                      WHERE fcr_current.request_id = $p_conc_request_id
+                                                                                                     )
+                                                                      )
+                               )
+;
+EXIT;
+EOF`
+#
+# -----------------------------------------------------------------------------------------
+# Triming the request id that was received from the SQL statement and getting the output
+# from the $APPLCSF/$APPLOUT and archiving it in the p_upload_dir
+# -----------------------------------------------------------------------------------------
+#
+   v_request_id=`echo ${v_request_id}|tr -s "" " "`
+   echo "Output of the request ${v_request_id} need to be moved. "
+   echo " "
+#
+# ----------------------------------------------------------------------------------------
+# Check if the concurrent request output that needs to be archived is a XML publisher
+# output. If yes, then the outfile name would be different else it would be with 
+# extension o${request_id}.out
+# ----------------------------------------------------------------------------------------
+#
+   v_xml_program=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT count(*)
+  FROM xdo.xdo_templates_b
+ WHERE data_source_code = '$p_concurrent_short_name'
+   AND dependency_flag = 'P';
+EXIT;
+EOF`
+#
+# As per Ticket #100604-02748, Outbound section modified to add archiving and encryption functionality
+   if [ ${v_xml_program} -ne 0 ]; then
+#
+
+ echo "File to be moved is ${p_concurrent_short_name}_${v_request_id}_1. "
+   # -----------------------------------------------------------------------------------------
+   # Check the output directory to find if the etext report is generated.
+   # if yes, then copy the output file to the $UPLOAD_DIR
+   # 131205-10395 Changed ${p_concurrent_short_name}_${request_id}_1 to ${p_concurrent_short_name}_${v_request_id}_1
+   # -----------------------------------------------------------------------------------------
+      if [ -f ${APPLCSF}/${APPLOUT}/${p_concurrent_short_name}_${v_request_id}_1.* ]; then
+        echo "removing files older than 24 hrs from outbound direcotry"
+        find ${p_upload_dir}/ -ctime +0 -name ${p_file_name}*.*  -exec rm {} \;
+        echo " "
+        echo "Program generated Output which is of XML type "
+        echo "Placing output file in outbound directory"
+        perl -pe 's/\r\n|\n|\r/\r\n/g' ${APPLCSF}/${APPLOUT}/${p_concurrent_short_name}_${v_request_id}_1.* >> ${p_upload_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt 
+        wait         
+       #
+        echo "Archiving XML Publisher output."
+        echo " "
+        cat ${APPLCSF}/${APPLOUT}/${p_concurrent_short_name}_${v_request_id}_1.* >> ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+        gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+        gzip ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt.gpg
+        rm -f ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+        wait
+       #
+       # 100827-05697 - Added by Vaibhav to remove output file for those requests that are moved to secure directory.
+       #
+        echo "Parsing p_upload_dir"
+        p_secure=$(echo "$p_upload_dir" |awk '{print substr($p_upload_dir,length($p_upload_dir)-6,length($p_upload_dir))}')
+       #
+        if [ ${p_secure} = /secure ]; then
+          echo "Deleting Output File from Server in case of Secure Output"
+          rm -f ${APPLCSF}/${APPLOUT}/${p_concurrent_short_name}_${v_request_id}_1.* 
+        fi
+       # 100827-05697 - End of change Vaibhav
+      else 
+        echo " "
+        echo "Error locating generated output file"
+        echo " "
+        echo "Terminating Inbound/Outbound Program"
+        exit 1 
+      fi
+   else
+     echo 
+     if [ -f ${APPLCSF}/${APPLOUT}/o${v_request_id}.out ]; then
+       echo "removing files older than 24 hrs from outbound direcotry"
+       find ${p_upload_dir}/ -ctime +0 -name ${p_file_name}*.*  -exec rm {} \;
+       echo " "
+       echo "Placing output file in outbound directory"
+       perl -pe 's/\r\n|\n|\r/\r\n/g' ${APPLCSF}/${APPLOUT}/o${v_request_id}.out >> ${p_upload_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+       wait
+      #
+       echo " "
+       echo "Archiving Output file."
+       echo " "
+       cat ${APPLCSF}/${APPLOUT}/o${v_request_id}.out >> ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+       wait
+       gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+       gzip ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt.gpg
+       rm -f ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}_${v_request_id}'_'${datetime}.txt
+      #
+      # 100827-05697 - Added by Vaibhav to remove output file for those requests that are moved to secure directory.
+      #
+       echo "Parsing p_upload_dir"
+       p_secure=$(echo "$p_upload_dir" |awk '{print substr($p_upload_dir,length($p_upload_dir)-6,length($p_upload_dir))}')
+      #
+       if [ ${p_secure} = /secure ]; then
+         echo "Deleting Output File from Server in case of Secure Output"
+         rm -f ${APPLCSF}/${APPLOUT}/o${v_request_id}.out
+       fi
+      # 100827-05697 - End of change Vaibhav
+     else
+       echo " "
+       echo "Error locating generated output file"
+       echo " "
+       echo "Terminating Inbound/Outbound Program"
+       exit 1
+     fi  
+   fi
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Outbound process completed SUCCESSFULLY"
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if load_type is unknown implying 
+# that the value set configurations in Oracle is incorrect.
+# ---------------------------------------------------------------------------
+#
+else
+   echo "Error :: Unknown load type setting. "
+   echo "Please contact technical support."
+   echo " " 
+   exit 1
+fi
+#
+exit

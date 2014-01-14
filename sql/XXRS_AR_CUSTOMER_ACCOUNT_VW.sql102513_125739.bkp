@@ -1,0 +1,69 @@
+DROP VIEW xxrs.xxrs_ar_customer_account;
+CREATE OR REPLACE FORCE VIEW
+/**********************************************************************************************************************
+*                                                                                                                     *
+* NAME : XXRS_AR_CUSTOMER_ACCOUNT_VW.sql                                                                              *
+*                                                                                                                     *
+* DESCRIPTION :                                                                                                       *
+* View to Hold Customer Balance Data.                                                                                 * 
+*                                                                                                                     *
+* AUTHOR       : SUDHEER GUNTU                                                                                        *
+* DATE WRITTEN : 09-JAN-2012                                                                                          *
+*                                                                                                                     *
+* CHANGE CONTROL :                                                                                                    *
+* Version#     |  TICKET          | WHO             |  DATE          |   REMARKS                                      *
+*---------------------------------------------------------------------------------------------------------------------*
+* 1.0.0        |  111122-02448    | SUDHEER GUNTU   |  09-JAN-12     |  Initial Build for R12 upgradation             *
+**********************************************************************************************************************/
+/* $Header: XXRS_AR_CUSTOMER_ACCOUNT_VW.sql 1.0.0 11-JAN-2012 03:44:00 PM SUDHEER GUNTU $ */
+xxrs.xxrs_ar_customer_account
+(
+  customer_or_location,
+  acctd_or_entered,
+  customer_id,
+  customer_name,
+  customer_number,
+  customer_status,
+  customer_site_use_id,
+  location,
+  currency_code,
+  balance
+)
+AS
+  SELECT 'L',                                  /* CUSTOMER_OR_LOCATION */
+         'E',                                      /* ACCTD_OR_ENTERED */
+         cust_acct.cust_account_id,                     /* customer_id */
+         SUBSTRB (party.party_name, 1, 50),           /* customer_name */
+         cust_acct.account_number,                  /* customer_number */
+         cust_acct.status,                          /* customer_status */
+         su.site_use_id,                       /* customer_site_use_id */
+         su.location,                                      /* location */
+         ps.invoice_currency_code,                    /* currency_code */
+         SUM(DECODE (
+               SIGN (
+                  TRUNC (SYSDATE) - TRUNC (NVL (ps.due_date, SYSDATE))
+               ),
+               1,
+               ps.amount_due_remaining,
+               0
+            ))  /* balance */
+    FROM apps.ar_payment_schedules ps,
+         apps.hz_cust_site_uses su,
+         apps.hz_cust_acct_sites a,
+         ar.hz_cust_accounts cust_acct,
+         ar.hz_parties party
+   WHERE cust_acct.cust_account_id = a.cust_account_id
+     AND cust_acct.party_id = party.party_id
+     AND a.cust_acct_site_id = su.cust_acct_site_id
+     AND su.site_use_id = ps.customer_site_use_id(+)
+     AND su.site_use_code IN ('BILL_TO', 'DRAWEE')
+     AND NVL (ps.receipt_confirmed_flag(+), 'Y') = 'Y'
+GROUP BY cust_acct.cust_account_id,
+         party.party_name,
+         cust_acct.account_number,
+         cust_acct.status,
+         su.site_use_id,
+         su.location,
+         ps.invoice_currency_code;
+/
+

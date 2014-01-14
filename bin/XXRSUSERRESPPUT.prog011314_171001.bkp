@@ -1,0 +1,154 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSUSERRESPPUT.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace User responsibility list report output move & archive Program                  *
+# *                                                                                                        *
+# * AUTHOR       : Mahesh Guddeti                                                                          *
+# * DATE WRITTEN : 15-JUN-2013                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#  | REF#         | WHO             |   DATE      | REMARKS                                         *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0 | 130329-06143 | Mahesh Guddeti  | 15-JUN-2013 | Initial Build                                   *
+# *********************************************************************************************************/
+# $Header: XXRSUSERRESPPUT.prog  1.0.0 15-JUN-2013 10.00AM Mahesh Guddeti $ 
+echo "-----------------------------------------------------------------------"
+echo "Start of Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# The upload directory is always derived from responsibility 
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+v_upload_dir=`eval echo "${5}"`
+date=`date +%Y%m%d`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "Path               = "$0
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Environment        =  ${l_env}"
+
+#
+filedate=`date '+%C%y%m%d'`
+#
+requestid=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+FROM fnd_concurrent_requests fcr,
+     fnd_concurrent_programs fcp,
+     fnd_concurrent_programs_tl fcpt
+WHERE fcp.concurrent_program_id = fcr.concurrent_program_id
+  AND fcp.application_id = fcr.program_application_id
+  AND fcpt.concurrent_program_id = fcp.concurrent_program_id
+  AND fcpt.application_id = fcp.application_id
+  AND fcpt.language = USERENV('LANG')
+  AND fcp.concurrent_program_name = 'XXRSUSERRESP'
+  AND fcr.parent_request_id IN (SELECT fcr_sibling.request_id
+                                FROM fnd_concurrent_requests fcr_sibling
+                                WHERE fcr_sibling.parent_request_id = (SELECT fcr_parent.parent_request_id
+                                                                       FROM fnd_concurrent_requests fcr_parent
+                                                                       WHERE fcr_parent.request_id = (SELECT fcr_current.parent_request_id
+                                                                                                      FROM fnd_concurrent_requests fcr_current
+                                                                                                      WHERE fcr_current.request_id = ${p_conc_request_id}
+                                                                                                     )
+                                                                      )
+                               )
+;
+EXIT;
+EOF`
+#
+  requestid=`echo ${requestid}|tr -s "" " "`
+#
+  echo " "
+  echo 'Request ID of Rackspace User Responsibility List Report: ' ${requestid}
+  echo " "
+#
+  filename=`echo xxrs_userresp_etext.${filedate}${requestid}|tr '[A-Z]' '[a-z]'|tr -s "" " "`
+#
+  user_id=`echo ${user_id}|tr -s "" " "`
+#
+# -----------------------------------------------------------------------------------------
+# Keep files in $V_UPLOAD_DIR for a day and cleanup the directory. This is required before the if 
+# condition in order to avoid any confusion in getting the output file.
+#
+# Check the output directory to find if the report is generated.
+# if yes, then copy the output file to the $UPLOAD_DIR
+# -----------------------------------------------------------------------------------------
+#
+  #find ${v_upload_dir}/ -ctime +0 -name 'OracleFinancial_Accounts*.*' -exec rm {} \;
+
+if [ -f ${APPLCSF}/${APPLOUT}/XXRSUSERRESP_${requestid}_1.ETEXT ]; then
+    rm ${v_upload_dir}/OracleFinancial_Accounts.txt
+if [ $l_env = "PRD" ]; then 
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/XXRSUSERRESP_${requestid}_1.ETEXT >> ${v_upload_dir}/OracleFinancial_Accounts.txt
+    rm -f ${APPLCSF}/${APPLOUT}/XXRSUSERRESP_${requestid}_1.ETEXT
+    rm -f ${APPLCSF}/${APPLOUT}/o${requestid}*.out
+    echo $?
+else
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/XXRSUSERRESP_${requestid}_1.ETEXT >> ${v_upload_dir}/OracleFinancial_Accounts.txt
+    echo $?
+fi
+# ---------------------------------------------------------------------------
+# Put the file from the SFTP site and place the file in data folder. Once
+# file is placed in the data folder then iterate through the file and remove
+# it from the SFTP site.
+# ---------------------------------------------------------------------------
+#
+if [ $l_env = "PRD" ]; then 
+cd ${v_upload_dir}
+sftp oracle_financials@ags1.iam.rackspace.com<< EOF_FTP
+rm OracleFinancial_Accounts.txt
+put OracleFinancial_Accounts.txt
+ls -ltr
+EOF_FTP
+else
+if [ $l_env = "QA" ]; then 
+cd ${v_upload_dir}
+sftp oracle_financials@s-ags1.iam.rackspace.com<< EOF_FTP
+rm OracleFinancial_Accounts.txt
+put OracleFinancial_Accounts.txt
+ls -ltr
+EOF_FTP
+else
+cd ${v_upload_dir}
+sftp oracle_financials@d-ags.iam.rackspace.com<< EOF_FTP
+rm *.txt
+rm OracleFinancial_Accounts.txt
+put OracleFinancial_Accounts.txt
+ls -ltr
+EOF_FTP
+fi
+fi
+#
+      if (($? != 0))
+      then
+        print " Error placing dell outbound file on server "
+#
+        echo "---------------------------------------------------------------------------------"
+        echo "Output file "${filename}.txt "is located at "${v_upload_dir}
+        echo "Generated File Need to be Transferred manually to Dell"
+        exit 1
+     else
+       echo 'Rackspace User Responsibility List Report File Successfully Placed on Server' 
+     fi
+
+    rm ${v_upload_dir}/OracleFinancial_Accounts.txt
+	 
+  else
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file generated by concurrent program is not found."
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+  exit 1
+  fi

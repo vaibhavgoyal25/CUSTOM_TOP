@@ -1,0 +1,389 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRSAPEMPEXPLD.prog                                                                             *
+# *                                                                                                        *
+# * DESCRIPTION : Script to populate Employee Expense Data From Workday.                                   *
+# *                                                                                                        *
+# * AUTHOR       : SUDHEER GUNTU                                                                           *
+# * DATE WRITTEN : 05-JAN-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    | Ticket Number   |   WHO               |  DATE         | REMARKS                              *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   | 111122-02448    |   SUDHEER GUNTU     |  05-JAN-2012  | Initial Creation                     *
+# *                                                                   for R12 Upgradation                  *
+# **********************************************************************************************************/
+#
+#
+file_exists()
+{
+  for file in ${1}; do
+    if [ -e $file ]; then
+      echo "Imported file is found"
+      return
+    fi
+  done
+#
+  echo "---------------------------------------------------------------------------------"
+  echo "No file is found to copy."
+  echo "---------------------------------------------------------------------------------"
+  echo " "
+  exit 0 
+}
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of Employee Expense Interface Load Script."
+echo "Time: "`date +%Y%m%d%H%M%S`
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Assumption: The file is formatted to according to the specification document
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+p_file_name=$5
+l_error_flag=F
+l_stage_location=${XXRS_TOP}/data/ap/emp_exp
+l_archive_location=${XXRS_TOP}/archive/ap/emp_exp
+l_ctl_file=XXRSAPWKDYEMPEXP
+datetime=`date +%Y%m%d%H%M%S`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Date Time          =  ${datetime}"
+#
+# ---------------------------------------------------------------------------
+# Get the file from the SFTP site and place the file in data folder. Once
+# file is placed in the data folder then iterate through the file and remove
+# it from the SFTP site.
+# ---------------------------------------------------------------------------
+#
+if [ $l_env = "PRD" ]; then 
+cd ${l_stage_location}
+sftp workdayprd@ftp1.ord1.corp.rackspace.com<< EOF_FTP
+cd oracle_inbound
+get ${p_file_name}*.gpg
+EOF_FTP
+else
+cd ${l_stage_location}
+sftp workdaydev@ftp1.ord1.corp.rackspace.com<< EOF_FTP
+cd oracle_inbound
+get ${p_file_name}*.gpg
+EOF_FTP
+fi
+#
+# ---------------------------------------------------------------------------
+# Check For Successful File Transfer from Rackspace SFTP Server to
+# Rackspace App Server.If Success then remove the file from sftp site.
+# ---------------------------------------------------------------------------
+#
+if (($? != 0))     # Examine error status
+then
+  print " Error while fetching file from Rackspace SFTP server into App Server"
+    
+  echo "---------------------------------------------------------------------------------"
+  exit 1
+else
+#
+file_exists ${p_file_name}*.gpg
+#
+echo 'File Successfully Imported into Rackspace App Server from Rackspace SFTP Server'
+#
+cd ${l_stage_location}
+#
+for file in ${p_file_name}*.gpg; do
+  if [ -e ${file} ]; then
+#
+    echo " "
+    echo "-----------------------------------------------------------------------"
+    echo "Processing import file ${file}.."
+    echo " "
+#
+if [ $l_env = "PRD" ]; then 
+#
+sftp workdayprd@ftp1.ord1.corp.rackspace.com<< EOF_FTP
+cd oracle_inbound
+rm ${file}
+EOF_FTP
+#
+else
+#
+sftp workdaydev@ftp1.ord1.corp.rackspace.com<< EOF_FTP
+cd oracle_inbound
+rm ${file}
+EOF_FTP
+#
+fi
+#
+# ---------------------------------------------------------------------------
+# If There is an error while deleting the file report Error.
+# ---------------------------------------------------------------------------
+#
+if (($? != 0)) then
+echo " "
+echo "ERROR!!! while deleting file ${file} from Rackspace SFTP Server"
+exit 1
+fi
+# -----------------------------------------------------------------------------------------
+# Decrypt the file into CSV file for processing
+# -----------------------------------------------------------------------------------------
+#
+#
+    echo "Decrypting interface file "${file}
+#
+    l_file_name=`echo ${file} | sed s/.gpg\$//`
+#
+    echo "${l_file_name}.csv"
+    gpg -d ${file} > ${l_file_name}.csv
+#
+       if [ "$?" = "0" ]; then
+#
+#      remove existing gpg file  
+#
+         rm -f ${file}
+         echo " [ DONE ]"
+       else
+         echo " [ FAILED ]"
+         exit 1
+       fi
+#
+#
+# ---------------------------------------------------------------------------
+# Check to see if this a normal load or a reverse load.  If so then check
+# to see if the file has already been processed by checking the archive 
+# directory to see if the file exists in the directory. If we already have
+# run the unload then delete the previous file so that we keep the processed
+# data check in synch.
+# ---------------------------------------------------------------------------
+#
+echo "-----------------------------------------------------------------------"
+echo "Checking for already processed files                                   "
+echo " "
+#
+archive_file_count=`ls  ${l_archive_location}/${l_file_name}_*_C.dat.gpg.gz | wc -l`
+#
+if [ ${archive_file_count} -ge 1 ]; then
+# 
+  echo " "
+  echo "-----------------------------------------------------------------------"
+  echo "Error :: File already processed, found in archive directory."
+  echo " "
+  exit 1
+#
+else
+#
+  echo " "
+  echo "File was never processed. Continue loading the file. "
+  echo " "
+#
+fi
+#
+# ---------------------------------------------------------------------------
+# Append the concurrent request id to allow a rollback to occur 
+# if there are any error records. Renaming the file back to *.csv
+# ---------------------------------------------------------------------------
+#
+#
+echo "-----------------------------------------------------------------------"
+echo "Adding concurrent request id to each data record for rolling back."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+   cat ${l_stage_location}/${l_file_name}.csv | sed 's/$'"/`echo ','${p_conc_request_id}','${p_user_id}`/" > ${l_stage_location}/${l_file_name}.dat
+#
+   rm -f ${l_stage_location}/${l_file_name}*.csv
+   cp -p ${l_stage_location}/${l_file_name}.dat ${l_stage_location}/${l_file_name}.csv
+   rm -f ${l_stage_location}/${l_file_name}.dat
+#
+# ---------------------------------------------------------------------------
+# Clean up the log directory that houses the log, bad, and discard files 
+# that SQL Loader produces.
+# ---------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Remove old .log, .bad, and .dsc SQL Loader files from directory."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+   if [ -f ${XXRS_TOP}/log/${l_file_name}.log ]; then
+     rm ${XXRS_TOP}/log/${l_file_name}.log
+   fi
+#
+   if [ -f ${XXRS_TOP}/log/${l_file_name}.bad ]; then
+     rm ${XXRS_TOP}/log/${l_file_name}.bad
+   fi
+#
+   if [ -f ${XXRS_TOP}/log/${l_file_name}.dsc ]; then
+     rm ${XXRS_TOP}/log/${l_file_name}.dsc
+   fi
+
+
+#
+# ----------------------------------------------------------------------------
+# Call the SQL Loader to load the data into the invoice worksheet table
+# ----------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Running SQL Loader process."
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+   sqlldr userid=${p_apps_usrn_pwd} data=${l_stage_location}/${l_file_name}.csv \
+                                 control=${XXRS_TOP}/bin/${l_ctl_file}.ctl \
+                                     log=${XXRS_TOP}/log/${l_file_name}.log \
+                                     bad=${XXRS_TOP}/log/${l_file_name}.bad \
+                                 discard=${XXRS_TOP}/log/${l_file_name}.dsc \
+                                  errors=0 \
+                              discardmax=1
+   return_status=$?
+   wait
+#
+# ---------------------------------------------------------------------------
+# Check the return status of the SQL Loader command.  If there are any 
+# errors, warnings, fatal, or unknown errors, then rollback all the changes 
+# in the Unload script and remove the usage data file. If all the rows in 
+# the datafile are loaded successfully, then move the processed file to the 
+# archive directory for auditing purposes both in the network drive and on 
+# the Oracle side.  If the process opts is validate only then we need to
+# unload the data from the staging table.  This process will be launched
+# from the audit script automatically.
+# ---------------------------------------------------------------------------
+#
+   echo " " 
+   echo "Checking the SQL Loader status."
+   echo " " 
+#
+   case ${return_status} in
+      0) echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded." 
+         echo " "
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+         echo " " 
+         loader_status=SUCCESS;;      
+#
+      1) echo "SQL*Loader execution exited with FAILURE, see logfile."
+         echo "There could be records in the Invoice Worksheet Table. Please process them before running the import program."
+         echo "Remember to check data across all Org (like US, UK, NL.. etc)" 
+         echo " " 
+         loader_status=FAIL
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------";;
+#
+      2) echo "SQL*Loader execution exited with WARNING, see logfile."
+         echo " " 
+         loader_status=WARNING
+         touch ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}'_F'.dat.gpg.gz
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------";;
+
+#
+      3) echo "SQL*Loader execution encountered a FATAL ERROR."
+         echo " " 
+         loader_status=FATAL
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+         echo " ";;
+
+#
+      *) echo "UNKNOWN return code."
+         echo " " 
+         loader_status=UNKNOWN
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${l_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------";;
+#
+   esac
+#
+# -----------------------------------------------------------------------------
+# If the loader return status is sucessful then submit the GL Interface program
+# and archive the data file
+# -----------------------------------------------------------------------------
+#
+   if [ ${loader_status} = SUCCESS ]; then
+#     
+       echo " "
+       echo "Archiving data file. Marking archive file as completed "
+       echo " "
+#
+       mv -f ${l_stage_location}/${l_file_name}.csv \
+           ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat
+       gpg -e --default-recipient 'OracleDBA' ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat
+       gzip ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat.gpg
+       rm -f ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat
+       rm -f ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_C.dat.gpg
+       wait
+#
+       find ${l_archive_location}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+#
+  else
+     echo " "
+     echo "Deleting any Loaded records in the staging table by this request"
+     echo " "
+     l_error_flag=T
+
+     echo " "
+     echo "Archiving data file. Marking archive file as failed "
+     echo " "
+#
+     mv -f ${l_stage_location}/${l_file_name}.csv \
+           ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat
+     gpg -e --default-recipient 'OracleDBA' ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat
+     gzip ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat.gpg
+     rm -f ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat
+     rm -f ${l_archive_location}/${l_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat.gpg
+     wait
+#
+     find ${l_archive_location}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+#
+      echo "SKIPPING file ${l_file_name}.csv execution.. "
+      continue
+  fi
+#
+  fi
+#
+done
+#
+fi
+#
+if [ ${l_error_flag} = "T" ]; then
+sqlplus -s ${p_apps_usrn_pwd} << EOF
+SET SERVEROUTPUT ON SIZE 1000000
+declare
+p_conc_req_id NUMBER := ${p_conc_request_id};
+begin
+delete from xxrs.xxrs_ap_wkdy_emp_expenses
+where conc_request_id = p_conc_req_id;
+COMMIT;
+end;
+/
+EOF
+   echo " "
+   echo "Some or all of the file import FAILED to load successfully. Please review this log. "
+   mv -f ${l_archive_location}/${p_file_name}*${p_conc_request_id}'_'${datetime}_C.dat.gpg.gz ${l_archive_location}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}_F.dat.gpg.gz
+   exit 1
+fi
+#
+exit

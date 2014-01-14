@@ -1,0 +1,132 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRSGLTSARCH.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace TaxStream Move & Archive Program                                               *
+# *                                                                                                        *
+# * AUTHOR       : Sreekanth Reddy N                                                                       *
+# * DATE WRITTEN : 06-JAN-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |        REF#        |         WHO         |      DATE     |                REMARKS            *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |  111122-02448      | Sreekanth Reddy N   |  06-JAN-2012  |           R12 Upgradation         *
+# **********************************************************************************************************/
+#/* $Header: XXRSGLTSARCH.prog 1.0.0 06-JAN-2012 12:37:00 PM Sreekanth $ */
+echo "-----------------------------------------------------------------------"
+echo "Start of Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+p_period=`echo ${5}|tr "-" "_"`
+p_currency=$6
+v_upload_dir=`eval echo "${7}"`
+filetype=TaxStreamTrialBalance
+date=`date +%Y%m%d`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Period Name        =  ${p_period}"
+echo "Currency           =  ${p_currency}"
+echo "Outbound Dire      =  ${v_upload_dir}"
+#
+filedate=`date '+%C%y%m%d'`
+#
+requestid=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+  FROM fnd_concurrent_requests fcr,
+       fnd_concurrent_programs fcp,
+       fnd_concurrent_programs_tl fcpt
+ WHERE fcp.concurrent_program_id = fcr.concurrent_program_id
+   AND fcp.application_id = fcr.program_application_id
+   AND fcpt.concurrent_program_id = fcp.concurrent_program_id
+   AND fcpt.application_id = fcp.application_id
+   AND fcpt.language = USERENV('LANG')
+   AND fcp.concurrent_program_name = 'XXRSGLTSOB'
+   AND fcr.parent_request_id IN (SELECT fcr_sibling.request_id
+                                   FROM fnd_concurrent_requests fcr_sibling
+                                  WHERE fcr_sibling.parent_request_id = (SELECT fcr_parent.parent_request_id
+                                                                           FROM fnd_concurrent_requests fcr_parent
+                                                                          WHERE fcr_parent.request_id = (SELECT fcr_current.parent_request_id
+                                                                                                            FROM fnd_concurrent_requests fcr_current
+                                                                                                           WHERE fcr_current.request_id = $4
+                                                                                                        )
+                                                                        )
+                                )
+;
+EXIT;
+EOF`
+#
+  requestid=`echo ${requestid}|tr -s "" " "`
+#
+  echo " "
+  echo 'Request ID of GL TaxStream Outbound FILE: ' ${requestid}
+  echo " "
+#
+  filename=`echo ${filetype}_${p_period}_${p_currency}_${filedate}_${requestid}|tr '[A-Z]' '[a-z]'|tr -s "" " "`
+#
+# -----------------------------------------------------------------------------------------
+# Keep files in $V_UPLOAD_DIR for a day and cleanup the directory. This is required before the if 
+# condition in order to avoid any confusion in getting the output file.
+#
+# Check the output directory to find if the etext report is generated.
+# if yes, then copy the output file to the $UPLOAD_DIR/TaxStream
+# -----------------------------------------------------------------------------------------
+#
+  find ${v_upload_dir}/ -ctime +0 -name 'taxstreamtrialbalance*.*' -exec rm {} \;
+# 
+  if [ -f ${APPLCSF}/${APPLOUT}/XXRSGLTSOB_${requestid}_1.ETEXT ]; then
+# Used perl instead of cat so that we convert file to dos format  100111-08658
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/XXRSGLTSOB_${requestid}_1.ETEXT >> ${v_upload_dir}/${filename}.txt
+#
+# -----------------------------------------------------------------------------------------
+# Copy the file from the TaxStream output directory to Archive directory and then
+# encrypt and zip the file
+# -----------------------------------------------------------------------------------------
+#
+    cp ${v_upload_dir}/${filename}.txt ${XXRS_TOP}/archive/taxstream/
+    gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/taxstream/${filename}.txt
+    gzip ${XXRS_TOP}/archive/taxstream/${filename}.txt.gpg
+# 
+# -----------------------------------------------------------------------------------------
+# Remove the original file from the archive directory
+# -----------------------------------------------------------------------------------------
+#
+    rm -f $XXRS_TOP/archive/taxstream/${filename}.txt
+#
+# -----------------------------------------------------------------------------------------
+# gzip archive/TaxStream/${filename}.txt.gpg
+# -----------------------------------------------------------------------------------------
+#
+    find ${XXRS_TOP}/archive/taxstream/ -ctime +120 -name '*gpg*gz' -exec rm {} \;
+#
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file ${filename} is located at "${v_upload_dir}
+    echo " "
+#
+    echo "---------------------------------------------------------------------------------"
+    echo "File Transferred Successfully"
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+#
+  else
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file generated by concurrent program is not in ETEXT format."
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+    exit 1
+  fi

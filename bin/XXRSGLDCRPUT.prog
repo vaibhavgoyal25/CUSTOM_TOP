@@ -1,0 +1,138 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSGLDCRPUT.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace Daily Conversion Rate Move Program.                                            *
+# *                                                                                                        *
+# * AUTHOR       : Sudheer                                                                                 *
+# * DATE WRITTEN : 21-DEC-2011                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#  | REF#          | WHO             |   DATE      | REMARKS                                        *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0 | 111122-02448  | Sudheer         | 21-DEC-2011 | Technical upgrade done for R12                 *
+# *********************************************************************************************************/
+echo "-----------------------------------------------------------------------"
+echo "Start of Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# The upload directory is always derived from responsibility 
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+v_archive_dir=`eval echo "${5}"`
+date=`date +%Y%m%d`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "Path               = "$0
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Environment        =  ${l_env}"
+#
+filedate=`date '+%C%y%m%d'`
+#
+requestid=`sqlplus -silent ${p_apps_usrn_pwd} <<EOF
+SET HEAD OFF
+SELECT fcr.request_id
+FROM   fnd_concurrent_requests fcr
+      ,fnd_concurrent_programs fcp
+      ,fnd_concurrent_programs_tl fcpt
+WHERE  fcp.concurrent_program_id = fcr.concurrent_program_id
+AND    fcp.application_id = fcr.program_application_id
+AND    fcpt.concurrent_program_id = fcp.concurrent_program_id
+AND    fcpt.application_id = fcp.application_id
+AND    fcpt.LANGUAGE = USERENV ('LANG')
+AND    fcp.concurrent_program_name = 'XXRSGLDCR'
+AND    fcr.parent_request_id IN (
+          SELECT fcr_sibling.request_id
+          FROM   fnd_concurrent_requests fcr_sibling
+          WHERE  fcr_sibling.parent_request_id =
+                    (SELECT fcr_parent.parent_request_id
+                     FROM   fnd_concurrent_requests fcr_parent
+                     WHERE  fcr_parent.request_id =
+                                   (SELECT fcr_current.parent_request_id
+                                    FROM   fnd_concurrent_requests fcr_current
+                                    WHERE  fcr_current.request_id = $4)))
+;
+EXIT;
+EOF`
+#
+  requestid=`echo ${requestid}|tr -s "" " "`
+#
+  echo " "
+  echo 'Request ID of Daily Conversion Rate File: ' ${requestid}
+  echo " "
+#
+# filename=`echo XXRS_WD_DCR_${filedate}${requestid}|tr '[A-Z]' '[a-z]'|tr -s "" " "`
+  filename=`echo Currency_Exchange`
+#
+  if [ -f ${APPLCSF}/${APPLOUT}/o${requestid}.out ]; then
+
+    perl -pe 's/\r\n|\n|\r/\r\n/g'  ${APPLCSF}/${APPLOUT}/XXRSGLDCR_${requestid}_1.XML > ${v_archive_dir}/${filename}.xml
+
+# -----------------------------------------------------------------------------------------
+# copy extract file to Global Gateway server using SFTP 
+# copy only if instance is PRD otherwise do not copy file to PRD  
+# -----------------------------------------------------------------------------------------
+#
+    if [ $l_env = "PRD" ]; then
+#
+      cd ${v_archive_dir}
+#
+sftp workdayprd@ftp1.ord1.corp.rackspace.com<< EOF_FTP
+cd oracle_outbound
+put ${filename}.xml
+ls -ltr
+EOF_FTP
+#
+    else
+#
+      cd ${v_archive_dir}
+#
+sftp workdaydev@ftp1.ord1.corp.rackspace.com<< EOF_FTP
+cd oracle_outbound
+put ${filename}.xml
+ls -ltr
+EOF_FTP
+#
+    fi
+#
+      if (($? != 0))
+      then
+        print " Error placing file on Rackspace server For Workday "
+#
+        echo "---------------------------------------------------------------------------------"
+        echo "Output file "${filename}.xml "is located at "${v_archive_dir}
+        echo "Generated File Need to be Transferred manually to workday"
+        exit 1
+#
+      else
+       echo 'File Successfully Placed on Rackspace server For Workday' 
+#
+      fi
+#
+# -----------------------------------------------------------------------------------------
+# gzip the output file
+# -----------------------------------------------------------------------------------------
+#    
+    cp ${filename}.xml ${filename}_${requestid}.xml
+    rm ${filename}.xml
+    gzip ${v_archive_dir}/${filename}_${requestid}.xml
+    find ${v_archive_dir}/ -ctime +120 -name 'Currency_Exchange*' -exec rm {} \;
+
+  else
+    echo "---------------------------------------------------------------------------------"
+    echo "Output file generated by concurrent program is not found."
+    echo "---------------------------------------------------------------------------------"
+    echo " "
+  exit 1 
+  fi

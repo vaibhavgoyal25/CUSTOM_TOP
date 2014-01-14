@@ -1,0 +1,364 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRS_SC_MASS_CREDIT_MEMO.prog                                                                   *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace Mass credit memo upload loader program                                         *
+# *                                                                                                        *
+# * AUTHOR       : Vaibhav Goyal                                                                          *
+# * DATE WRITTEN : 01-MAR-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |        REF#        |         WHO         |      DATE    |                REMARKS             *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    111122-02448    |   Vaibhav Goyal     |  01-MAR-2012 |           Initial Creation         *
+# * 1.0.1   |    130617-06898    |   Mahesh Guddeti    |  08-AUG-2013 |           Initial Creation         *
+# **********************************************************************************************************/
+# $Header: XXRS_SC_MASS_CREDIT_MEMO.prog  1.0.1 08-AUG-2013 10.00AM Mahesh Guddeti $ 
+echo "-----------------------------------------------------------------------"
+echo "Start of Mass Credit Memo Upload Script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Assumption: The upload directory is always mnt/mntupload
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=$1
+p_user_id=$2
+p_user_name=$3
+p_conc_request_id=$4
+# --  Mahesh Guddeti Added parameter file_name 130617-06898
+p_file_name=$5
+p_reverse_flag=$6
+#110921-06291 Added parameter for Upload Dir
+v_upload_dir=`eval echo "${7}"`
+#110921-06291 Added parameter for Default Country
+p_default_country=`eval echo "${8}"`
+#Added parameter for process mode
+p_process_mode=`eval echo "${9}"`
+
+ctl_file=XXRS_SC_MASS_CREDIT_MEMO
+datetime=`date +%Y%m%d%H%M%S`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id            =  ${p_user_id}"
+echo "User Name          =  ${p_user_name}"
+echo "Request ID         =  ${p_conc_request_id}"
+echo "Input File Name    =  ${p_file_name}.csv"
+echo "Reverse Flag       =  ${p_reverse_flag}"
+echo "Upload Dir         =  ${v_upload_dir}"
+echo "Default Country    =  ${p_default_country}"
+echo "Process Mode       =  ${p_process_mode}"
+#
+# ---------------------------------------------------------------------------
+# Check to see if this a normal load or a reverse load.  If so then check
+# to see if the file has already been processed by checking the archive 
+# directory to see if the file exists in the directory. If we already have
+# run the unload then delete the previous file so that we keep the processed
+# data check in synch.
+# ---------------------------------------------------------------------------
+#
+archive_file=${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}_*.gz
+#
+if [ -f $archive_file ]; then
+   load_file=`ls  ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}_*.gz | wc -l`
+else
+   load_file=0
+fi
+#
+if [ ${p_reverse_flag} = N ]; then
+#
+   if [ ${load_file} -ge 1 ]; then
+# 
+     echo " "
+     echo "-----------------------------------------------------------------------"
+     echo "Error :: File already processed, found in archive directory."
+     echo " "
+     exit 1
+#
+   fi
+#
+# ----------------------------------------------------------------------------
+# Move the data file from upload_dir to the $XXRS_TOP/data and remove
+# any file that might already exist there.
+# ----------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Moving usage data file to Oracle directory for processing."
+   echo "Finding File        ${v_upload_dir}/${p_file_name}.csv"
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+   if [ -f ${v_upload_dir}/${p_file_name}.csv  ]; then
+#
+      if [ -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv.dos ]; then
+         rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv.dos 
+      fi
+#
+      cp -p ${v_upload_dir}/${p_file_name}.csv ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv.dos
+      wait
+      dos2unix -n ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv.dos ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv
+#
+      if [ -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv.dos ]; then
+         rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv.dos 
+      fi
+#
+   else
+      echo " "
+      echo "-----------------------------------------------------------------------" 
+      echo "Error :: File not found in staging directory. Please check your file"
+      echo "name and if the file exists in the staging directory."
+      echo " "
+      exit 1
+   fi
+#
+#
+# ---------------------------------------------------------------------------
+# Append the concurrent request id to allow a rollback to occur 
+# if there are any error records. Renaming the file back to *.csv
+# ---------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Adding concurrent request id to each data record for rolling back."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#--  Mahesh Guddeti Added  file_name 130617-06898
+   cat ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv | sed 's/$'"/`echo ','${p_file_name}','${p_user_id}`/" > ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.dat
+#
+   rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv
+   cp -p ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.dat ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv
+   rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.dat
+#
+# ---------------------------------------------------------------------------
+# Clean up the log directory that houses the log, bad, and discard files 
+# that SQL Loader produces.
+# ---------------------------------------------------------------------------
+#
+      echo "-----------------------------------------------------------------------"
+      echo "Remove old .log, .bad, and .dsc SQL Loader files from directory."
+      echo "-----------------------------------------------------------------------"
+      echo " "
+#
+      if [ -f ${XXRS_TOP}/log/${p_file_name}.log ]; then
+         rm ${XXRS_TOP}/log/${p_file_name}.log
+      fi
+#
+      if [ -f ${XXRS_TOP}/log/${p_file_name}.bad ]; then
+         rm ${XXRS_TOP}/log/${p_file_name}.bad
+      fi
+#
+      if [ -f ${XXRS_TOP}/log/${p_file_name}.dsc ]; then
+         rm ${XXRS_TOP}/log/${p_file_name}.dsc
+      fi
+#
+# ----------------------------------------------------------------------------
+# Call the SQL Loader to load the data into the invoice worksheet table
+# ----------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Running SQL Loader process."
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+   sqlldr userid=${p_apps_usrn_pwd} data=${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv \
+                                 control=${XXRS_TOP}/bin/${ctl_file}.ctl \
+                                     log=${XXRS_TOP}/log/${p_file_name}.log \
+                                     bad=${XXRS_TOP}/log/${p_file_name}.bad \
+                                 discard=${XXRS_TOP}/log/${p_file_name}.dsc \
+                                  errors=100 \
+                              discardmax=101
+   return_status=$?
+   wait
+#
+# ---------------------------------------------------------------------------
+# Check the return status of the SQL Loader command.  If there are any 
+# errors, warnings, fatal, or unknown errors, then rollback all the changes 
+# in the Unload script and remove the usage data file. If all the rows in 
+# the datafile are loaded successfully, then move the processed file to the 
+# archive directory for auditing purposes both in the network drive and on 
+# the Oracle side.  If the process opts is validate only then we need to
+# unload the data from the staging table.  This process will be launched
+# from the audit script automatically.
+# ---------------------------------------------------------------------------
+#
+   echo " " 
+   echo "Checking the SQL Loader status."
+   echo " " 
+#
+   case ${return_status} in
+      0) echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded." 
+         echo " "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " " 
+         loader_status=SUCCESS;;      
+#
+      1) echo "SQL*Loader execution exited with FAILURE, see logfile."
+         echo "There could be records in the Invoice Worksheet Table. Please process them before running the import program."
+         echo "Remember to check data across all Org (like US, UK, NL.. etc)" 
+         echo " " 
+         loader_status=FAIL
+         if [ -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------" 
+         exit 1;;
+#
+      2) echo "SQL*Loader execution exited with WARNING, see logfile."
+         echo " " 
+         loader_status=WARNING
+         if [ -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv 
+         fi
+         #touch ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}'_F'.dat.gpg.gz --Mahesh Guddeti 130617-06898
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+      3) echo "SQL*Loader execution encountered a FATAL ERROR."
+         echo " " 
+         loader_status=FATAL
+         if [ -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+      *) echo "UNKNOWN return code."
+         echo " " 
+         loader_status=UNKNOWN
+         if [ -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv ]; then
+           rm -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+   esac
+#
+# ----------------------------------------------------------------------------
+# If the loader return status is sucessful then any file that might already
+# exist there
+# ----------------------------------------------------------------------------
+#
+   if [ ${loader_status} = SUCCESS ]; then
+#
+    if [ ${p_process_mode} = COMPLETE ]; then  
+
+     echo " "
+     echo "Complete process."
+     echo " "
+     echo " "
+     echo "Archiving data file."
+     echo " "
+#
+     rm -f ${v_upload_dir}/${p_file_name}.csv
+     mv -f ${XXRS_TOP}/data/sc/mass_credit_memo/${p_default_country}/${p_file_name}.csv \
+           ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     gzip ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat.gpg
+     rm -f ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     wait
+
+   fi
+
+   find ${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Mass Credit Memo Upload execution is SUCCESSFUL"
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+   elif [ ${loader_status} = ERROR ]; then
+	return_status=`sqlplus ${p_apps_usrn_pwd}<<EOF
+	DELETE 
+	FROM xxrs.xxrs_sc_invoice_wkst_int_tbl;
+	exit;
+	commit;
+	/
+	EOF`
+   fi
+
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if reverse flag is set to Y (yes) and the
+# user wants to unload a previously loaded file of data from the usage
+# data table.
+# ---------------------------------------------------------------------------
+#
+elif [ ${p_reverse_flag} = Y ]; then
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Running UNLOAD sql command to remove records from Invoice Worksheet"
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+   if [ -f $archive_file ]; then
+     archive_file=${XXRS_TOP}/archive/sc/mass_credit_memo/${p_default_country}/${p_file_name}'_'*.gz
+   else
+     echo " "
+     echo "Error :: Archive file not found. Please check your file name."
+     echo "Exiting program without deleting records from Invoice Worksheet."
+     echo " "
+     exit 1
+   fi
+#
+return_status=`sqlplus ${p_apps_usrn_pwd}<<EOF
+DELETE 
+FROM xxrs.xxrs_sc_invoice_wkst_int_tbl;
+exit;
+commit;
+/
+EOF`
+#
+#   if [ ${return_status} -ne "" ]; then
+#
+#     echo " "
+#     echo "Error :: Unload failed.  Please contact technical support."
+#     echo " " 
+#     exit 1
+#
+#   else
+      echo "Unload Script execution SUCCESSFUL. Deleted ALL rows (across org) from Invoice Worksheet." 
+      rm -f ${archive_file}
+      wait
+      echo "Archive data file has been removed." 
+#   fi
+#
+# ---------------------------------------------------------------------------
+# Part of if block that occurs if reverse flag value is unknown implying 
+# that the value set configurations in Oracle are incorrect.
+# ---------------------------------------------------------------------------
+#
+else
+   echo "Error :: Unknown reverse flag setting.  Setups are incorrect.  "
+   echo "Please contact technical support."
+   echo " " 
+   exit 1
+fi
+#
+exit

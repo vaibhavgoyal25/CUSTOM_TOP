@@ -1,0 +1,244 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSARDDIB.prog                                                                                 *
+# *                                                                                                        *
+# * DESCRIPTION : Rackspace European Direct debit Inbound Program. Called internally from a Java Conc      *
+# *               program for inbound                                                                      *
+# *                                                                                                        *
+# * AUTHOR       : Kalyan                                                                                  *
+# * DATE WRITTEN : 09-MAR-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * SR#    VER        REF#           WHO            DATE            REMARKS                                *
+# *  1     1.0.0      111122-02448   Kalyan         09-MAR-2012     Initial build                          *
+# *********************************************************************************************************/
+#
+exec 2>&1
+#
+file_exists()
+{
+  for file in ${1}; do
+    if [ -e $file ]; then
+      return
+    fi
+  done
+#
+  echo "---------------------------------------------------------------------------------"
+  echo "No response file is found to copy."
+  echo "---------------------------------------------------------------------------------"
+  echo " "
+  exit 1 
+}
+#
+echo "-----------------------------------------------------------------------"
+echo "Script started to fetch response files from Chase Server."
+echo "Time: "`date '+%C%y%m%d%H%M%S'`
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Get the processing directory from the parameter
+# ----------------------------------------------------------------------------
+#
+p_process_location=${1}
+p_user_name=${2}
+p_ssh_key=${3}
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+# Added for 110804-06478
+l_archive_location=${XXRS_TOP}/archive/ar/globalgateway/response/NL
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed to the Job:"
+echo " "
+echo "Processing Location = ${p_process_location}"
+echo "User Name           = ${p_user_name}"
+echo "SSH Key Name        = ${p_ssh_key}"        
+echo "Instance            = ${l_env}" 
+#
+# -----------------------------------------------------------------------------------------
+# Fetch the response file from Global Gateway server using SCP   
+# -----------------------------------------------------------------------------------------
+#
+cd ${p_process_location}
+if [ $l_env = "PRD" ]; then
+#
+  echo " "
+  echo "Fetching response file(s) from Chase Server for Production..."
+  echo " "
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatch.paymentech.net<< EOF_FTP
+get *dd*_resp.gpg
+EOF_FTP
+#
+  if [ "$?" != "0" -a  "$?" != "2" ]; then
+    #get only files related to direct debit
+    echo " "
+    echo "Retrying fetching file(s) from chase fallback server for Production"
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatch2.paymentech.net<< EOF_FTP
+get *dd*_resp.gpg
+EOF_FTP
+  fi
+else
+#
+  echo " "
+  echo "Fetching response file(s) from Chase Server for Development..."
+  echo " "
+# get only files related to direct debit
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatchvar.paymentech.net<< EOF_FTP
+get *dd*_resp.gpg
+EOF_FTP
+#
+  if [ "$?" != "0" -a  "$?" != "2" ]; then
+    #
+    echo " "
+    echo "Retrying fetching file(s) from chase fallback server for Development"
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatchvar2.paymentech.net<< EOF_FTP
+get *dd*_resp.gpg 
+EOF_FTP
+  fi
+fi
+#
+if [ "$?" != "0" -a  "$?" != "2" ]; then
+  #
+  echo " "
+  echo "Error while fetching file(s) from chase server"
+  exit 1
+fi
+#
+echo "---------------------------------------------------------------------------------"
+echo "Fetching files from chase server is complete."
+echo " "
+#
+cd ${p_process_location}
+#
+for file in *_resp.gpg; do
+  if [ -e $file ]; then
+#
+    if [ $l_env = "PRD" ]; then
+#
+      echo " "
+      echo "Deleting SFTPed response file ${file} from Chase Server for Production..."
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatch.paymentech.net<< EOF_FTP
+rm ${file}
+EOF_FTP
+#
+      if [ "$?" != "0" -a  "$?" != "2" ]; then
+#
+        echo " "
+        echo "ERROR!!! while deleting response file ${file} from chase server for Production"
+      fi
+#
+      echo " "
+      echo "Deleting SFTPed response file ${file} from chase fallback server for Production..."
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatch2.paymentech.net<< EOF_FTP
+rm ${file}
+EOF_FTP
+#
+      if [ "$?" != "0" -a  "$?" != "2" ]; then
+#
+        echo " "
+        echo "ERROR!!! while deleting response file ${file} from chase fallback server for Production"
+      fi
+    else
+#
+      echo " "
+      echo "Deleting SFTPed response file ${file} from Chase Server for Development..."
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatchvar.paymentech.net<< EOF_FTP
+rm ${file}
+EOF_FTP
+#
+      if [ "$?" != "0" -a  "$?" != "2" ]; then
+#
+        echo " "
+        echo "ERROR!!! while deleting response file ${file} from chase server for Development"
+      fi
+#
+      echo " "
+      echo "Deleting SFTPed response file ${file} from Chase fallback server for Development..."
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_user_name}@orbitalbatchvar2.paymentech.net<< EOF_FTP
+rm ${file}
+EOF_FTP
+#
+      if [ "$?" != "0" -a  "$?" != "2" ]; then
+#
+        echo " "
+        echo "ERROR!!! while deleting response file ${file} from Chase fallback server for Development"
+      fi
+    fi
+#
+# -----------------------------------------------------------------------------------------
+# Decrypt the file into an XML file for processing
+# -----------------------------------------------------------------------------------------
+#
+    echo "Decrypting response file "${file}
+#    
+    decrypted=`echo ${file} | sed s/.gpg\$//`
+    echo "${decrypted}.xml"
+    #gpg --output ${decrypted}.xml -d ${file}
+    gpg -d ${file} > ${decrypted}.xml
+#
+    if [ "$?" = "0" ]; then
+#
+# remove exiting xml response file  
+#
+      rm -f ${file}
+      echo " [ DONE ]"
+    else
+      echo " [ FAILED ]"
+      exit 1
+    fi
+#
+# ---------------------------------------------------------------------------
+# Check to see if the file has already been processed by checking the archive 
+# directory to see if the file exists in the directory. If we already have
+# processed the file then the primary/secondary server might not be connected
+# for a while and hence it might not have got deleted there.
+# ---------------------------------------------------------------------------
+#
+    echo " "
+    echo "-------------------------------------------------------------------------"
+    echo "Checking for already processed files                                     "
+    echo " "
+#
+    archive_file_count=`ls  ${l_archive_location}/${decrypted}.xml_*.gpg.gz | wc -l`
+#
+    if [ ${archive_file_count} -ge 1 ]; then
+# 
+      echo " "
+      echo "Error :: File already processed, found in archive directory."
+      echo " "
+      echo "REMOVING the XML file ${decrypted}.xml  "
+      rm -f ${decrypted}.xml
+      continue
+#
+    else
+#
+      echo " "
+      echo "File was never processed. Continue loading the file. "
+#
+    fi
+    echo "-----------------------------------------------------------------------"
+    echo " "
+#
+  fi
+done
+#
+# -----------------------------------------------------------------------------------------
+# Check if there are files to process. If there are some xml files that need to be 
+# processed then go ahead with displaying a confirmation message
+# -----------------------------------------------------------------------------------------
+#
+#if $(file_exists *dd*_resp.xml); then
+#
+file_exists *dd*_resp.xml
+echo "---------------------------------------------------------------------------------"
+echo "File(s) are ready to be processed at "${p_process_location}
+echo " "
+#
+#else
+#
+#fi

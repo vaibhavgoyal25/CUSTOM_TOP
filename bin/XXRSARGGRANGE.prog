@@ -1,0 +1,313 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# *                                                                                                        *
+# * NAME : XXRSARGGRANGE.prog                                                                              *
+# *                                                                                                        *
+# * DESCRIPTION : Shell script to fetch the Credit Card Range File from Paymentech and Load the data into  *
+# *               Oracle.                                                                                  *
+# *                                                                                                        *
+# * AUTHOR       : SUDHEER GUNTU                                                                           *
+# * DATE WRITTEN : 09-JAN-2012                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#    |        REF#        |         WHO         |      DATE     |                REMARKS            *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0   |    111122-02448    |   SUDHEER GUNTU     | 09-JAN-2012   | Initial Creation                  *
+# * 1.0.1   |    120608-03822    |   Pavan Amirineni   | 08-JUN-2012   | Moved rm section to the end       *
+# **********************************************************************************************************/
+# /* $Header: XXRSARGGRANGE.prog 1.0.1 08-JUN-2012 03:43:00 PM Pavan Amirineni $ */
+#
+file_exists()
+{
+  for file in ${1}; do
+    if [ -e $file ]; then
+      echo "response file is found"
+      return
+    fi
+  done
+#
+  echo "---------------------------------------------------------------------------------"
+  echo "No file is found to copy."
+  echo "---------------------------------------------------------------------------------"
+  echo " "
+  exit 0 
+}
+#
+echo "-----------------------------------------------------------------------"
+echo "Start of XXRSARGGRANGE_PROG script."
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Need to initialize parameters for the shell script
+# ----------------------------------------------------------------------------
+#
+p_apps_usrn_pwd=${1}
+p_user_id=${2}
+p_user_name=${3}
+p_conc_request_id=${4}
+p_file_name=${5}
+p_upload_dir=`eval echo "${6}"`
+p_archive_dir=${7}
+p_delimiter=${8}
+p_bin_range_user_id=${9}
+p_ssh_key=${10}
+lpad_conc_request_id=`echo ${p_conc_request_id} |awk ' { printf "%015d\n", $0 } '`
+lpad_user_id=`echo ${p_user_id} |awk ' { printf "%015d\n", $0 } '`
+
+datetime=`date +%Y%m%d%H%M%S`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed from Oracle Concurrent Job:"
+echo " "
+echo "User Id               =  ${lpad_user_id}"
+echo "User Name             =  ${p_user_name}"
+echo "Request ID            =  ${lpad_conc_request_id}"
+echo "Input File Name       =  ${p_file_name}.dat"
+echo "Upload Directory      =  ${p_upload_dir}"
+echo "Archive Directory     =  ${p_archive_dir}"
+echo "Delimiter             =  ${p_delimiter}"
+echo "Environment           =  ${l_env}"
+#
+# -------------------------------------------------------------------------------------
+# Move the data file from upload_dir to the $XXRS_TOP/data/${p_data_dir} and remove
+# any file that might already exist there.
+# -------------------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Moving card range file from Chase Server to Oracle directory for processing."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+if [ $l_env = "PRD" ]; then 
+cd ${XXRS_TOP}/data/${p_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatch1.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*resp.gpg
+EOF_FTP
+if (($? != 0))     # Examine error status
+then    
+echo "Retrying to fetch the file from fallback Server"
+cd ${XXRS_TOP}/data/${p_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatch2.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*resp.gpg
+EOF_FTP
+fi
+else
+cd ${XXRS_TOP}/data/${p_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatchvar1.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*resp.gpg
+EOF_FTP
+if (($? != 0))     # Examine error status
+then    
+echo "Retrying to fetch the file from fallback Server"
+cd ${XXRS_TOP}/data/${p_upload_dir}
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatchvar2.chasepaymentech.net<< EOF_FTP
+get ${p_file_name}*resp.gpg
+EOF_FTP
+fi
+fi
+#
+if (($? != 0))     # Examine error status
+then
+  print " Error while fetching file from chase server "
+    
+  echo "---------------------------------------------------------------------------------"
+  exit 1
+else
+file_exists *resp.gpg
+#
+echo 'File Successfully Imported into Rackspace Server from Chase Server'
+# 120608-03822 decrypt the files as soon as you import from Chase and moved the removing from Chase Server to the end
+echo 'Decrypting the Imported files files and processing'
+      for file in ${p_file_name}*resp.gpg; do
+      if [ -e $file ]; then
+        echo "Decrypting response file ${file}"
+        gpg -d ${file} > ${p_file_name}.dat
+        #
+          if [ "$?" = "0" ]; then
+        #
+        # remove exiting xml response file  
+        #
+            rm -f ${file}
+            echo " [ DONE ]"
+          else
+            echo " [ FAILED ]"
+            exit 1
+          fi
+      fi
+    done
+fi
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Adding concurrent request id to each data record for rolling back."
+   echo "-----------------------------------------------------------------------"
+   echo " "
+#
+   cat ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat | sed 's/$'"/`echo ${lpad_conc_request_id}${lpad_user_id}`/" > ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}_tmp.dat
+#
+   rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat
+   cp -p ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}_tmp.dat ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat
+   rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}_tmp.dat
+# ----------------------------------------------------------------------------
+# Call the SQL Loader to load the data into the Paymentech Card Range Table
+# ----------------------------------------------------------------------------
+#
+   echo "-----------------------------------------------------------------------"
+   echo "Running SQL Loader process."
+   echo "-----------------------------------------------------------------------"
+   echo " " 
+#
+   sqlldr userid=${p_apps_usrn_pwd} data=${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat \
+                                 control=${XXRS_TOP}/bin/XXRSARGGRANGE.ctl \
+                                     log=${XXRS_TOP}/log/${p_file_name}.log \
+                                     bad=${XXRS_TOP}/log/${p_file_name}.bad \
+                                  silent=DISCARDS
+                                # discard=${XXRS_TOP}/log/${p_file_name}.dsc \
+                                  errors=0 \
+                              discardmax=2
+   return_status=$?
+   wait
+#
+# ---------------------------------------------------------------------------
+# Check the return status of the SQL Loader command.  If there are any 
+# errors, warnings, fatal, or unknown errors, then rollback all the changes 
+# in the Unload script and remove the usage data file. If all the rows in 
+# the datafile are loaded successfully, then move the processed file to the 
+# archive directory for auditing purposes both in the network drive and on 
+# the Oracle side.  If the process opts is validate only then we need to
+# unload the data from the staging table.  This process will be launched
+# from the audit script automatically.
+# ---------------------------------------------------------------------------
+#
+   echo " " 
+   echo "Checking the SQL Loader status."
+   echo " " 
+#
+   case ${return_status} in
+      0) echo "SQL*Loader execution SUCCESSFUL.  Archiving data file loaded." 
+         echo " "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " " 
+         loader_status=SUCCESS;;      
+#
+      1) echo "SQL*Loader execution exited with FAILURE, see logfile."
+         echo " " 
+         loader_status=FAIL
+         if [ -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat ]; then
+           rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------" 
+         exit 1;;
+#
+      2) echo "SQL*Loader execution exited with WARNING, see logfile."
+         echo " " 
+         loader_status=WARNING
+         if [ -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat ]; then
+           rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+      3) echo "SQL*Loader execution encountered a FATAL ERROR."
+         echo " " 
+         loader_status=FATAL
+         if [ -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat ]; then
+           rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+      *) echo "UNKNOWN return code."
+         echo " " 
+         loader_status=UNKNOWN
+         if [ -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat ]; then
+           rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat 
+         fi
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.log
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         echo "Bad Record is : "
+         echo | cat ${XXRS_TOP}/log/${p_file_name}.bad
+         echo " "
+         echo "-----------------------------------------------------------------------"
+         exit 1;;
+#
+   esac
+#
+# ----------------------------------------------------------------------------
+# If the loader return status is sucessful archive the file loaded and also
+# remove any file older than 90 days from the archive directory 
+# ----------------------------------------------------------------------------
+#
+   if [ ${loader_status} = SUCCESS ]; then
+#
+     echo "-----------------------------------------------------------------------"
+     echo "Card Range Data Loaded Successfully into Oracle"
+     echo "-----------------------------------------------------------------------"
+     echo " " 
+#
+     echo " "
+     echo "Archiving data file."
+     echo " "
+#
+     mv -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat \
+           ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     gpg -e --default-recipient 'OracleDBA' ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     gzip ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat.gpg
+     rm -f ${XXRS_TOP}/archive/${p_archive_dir}/${p_file_name}'_'${p_conc_request_id}'_'${datetime}.dat
+     rm -f ${XXRS_TOP}/data/${p_upload_dir}/${p_file_name}.dat
+#
+# 120608-03822 removing files from Chase only after loading the data
+#
+     echo "-----------------------------------------------------------------------"
+     echo "Delete the files on Chase Side after loading it successfully"
+     echo "-----------------------------------------------------------------------"
+     echo " " 
+echo "Delete the files on Chase Primary and fallback servers."
+if [ $l_env = "PRD" ]; then 
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatch1.chasepaymentech.net<< EOF_FTP
+rm ${p_file_name}*resp.gpg
+EOF_FTP
+
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatch2.chasepaymentech.net<< EOF_FTP
+rm ${p_file_name}*resp.gpg
+EOF_FTP
+#
+else
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatchvar1.chasepaymentech.net<<EOF_FTP
+rm ${p_file_name}*resp.gpg
+EOF_FTP
+#
+sftp -oIdentityFile=$HOME/.ssh/${p_ssh_key} ${p_bin_range_user_id}@netconnectbatchvar2.chasepaymentech.net<<EOF_FTP
+rm ${p_file_name}*resp.gpg
+EOF_FTP
+#
+fi
+     wait
+   fi
+   find ${XXRS_TOP}/archive/${p_archive_dir}/ -ctime +90 -name *gpg*gz -exec rm {} \;
+
+# 
+exit

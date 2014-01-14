@@ -1,0 +1,162 @@
+  /**********************************************************************************************************************
+  *                                                                                                                     *
+  * NAME : XXRS_SC_ACCOUNT_RESOURCE_VW.sql                                                                              *
+  *                                                                                                                     *
+  * DESCRIPTION :                                                                                                       *
+  * View used by account resource form.                                                                                 *
+  *                                                                                                                     *
+  * AUTHOR       : Vinodh Bhasker                                                                                       *
+  * DATE WRITTEN : 17-FEB-2012                                                                                          *
+  *                                                                                                                     *
+  * CHANGE CONTROL :                                                                                                    *
+  * SR#          |  Racker Ticket #  | WHO             |  DATE          |   REMARKS                                     *
+  *---------------------------------------------------------------------------------------------------------------------*
+  * 1.0          | 111122-02448      | Vinodh Bhasker  | 02/17/2012     | Initial Creation for R12                      *
+  ***********************************************************************************************************************/
+
+CREATE OR REPLACE FORCE VIEW apps.xxrs_sc_account_resource_vw ( row_id
+                                                              ,  account_resource_snid
+                                                              ,  account_product_snid
+                                                              ,  creating_contract_snid
+                                                              ,  org_id
+                                                              ,  cust_account_id
+                                                              ,  cust_acct_site_id
+                                                              ,  resource_num
+                                                              ,  contract_snid
+                                                              ,  price_tier_snid
+                                                              ,  product_resource_def_snid
+                                                              ,  parent_account_resource_snid
+                                                              ,  override_flag
+                                                              ,  initial_quantity
+                                                              ,  quantity
+                                                              ,  device_num
+                                                              ,  billing_start_date
+                                                              ,  billing_end_date
+                                                              ,  billed_date
+                                                              ,  exclude_from_billing_flag
+                                                              ,  description
+                                                              ,  prepay_months
+                                                              ,  spcl_price_flag
+                                                              ,  unit_price
+                                                              ,  creation_date
+                                                              ,  created_by
+                                                              ,  last_updated_by
+                                                              ,  last_update_login
+                                                              ,  last_update_date
+                                                              ,  resource_name
+                                                              ,  resource_billing_type_code
+                                                              ,  resource_billing_type_meaning
+                                                              ,  resource_billing_type_tag
+                                                              ,  unit_of_measure_code
+                                                              ,  unit_of_measure_meaning
+                                                              ,  tiered_flag
+                                                              ,  include_in_monthly_fee_flag
+                                                              ,  currency_code
+                                                              ,  business_segment_code
+                                                              ,  resource_def_snid
+                                                              ,  voided_flag
+                                                              ,  prepay_flag
+                                                              ,  prepay_start_date
+                                                              ,  prepay_end_date
+                                                              ,  attribute_category
+                                                              ,  attribute1
+                                                              ,  attribute2
+                                                              ,  attribute3
+                                                              ,  attribute4
+                                                              ,  attribute5
+                                                              ,  attribute6
+                                                              ,  attribute7
+                                                              ,  attribute8
+                                                              ,  attribute9
+                                                              ,  attribute10
+                                                              ,  attribute11
+                                                              ,  attribute12
+                                                              ,  attribute13
+                                                              ,  attribute14
+                                                              ,  attribute15
+                                                              ,  service_name
+                                                              ,  service_id
+                                                              ,  enable_services )
+AS
+    SELECT acc_res.ROWID
+         ,  acc_res.account_resource_snid
+         ,  acc_res.account_product_snid
+         ,  acc_res.creating_contract_snid
+         ,  acc_prod.org_id
+         ,  acc_prod.cust_account_id
+         ,  acc_prod.cust_acct_site_id
+         ,  acc_res.resource_num
+         ,  acc_prod.contract_snid
+         ,  acc_res.price_tier_snid
+         ,  acc_res.product_resource_def_snid
+         ,  acc_res.parent_account_resource_snid
+         ,  acc_res.override_flag
+         ,  acc_res.initial_quantity
+         ,  acc_res.quantity
+         ,  acc_res.device_num
+         ,  acc_res.billing_start_date
+         ,  acc_res.billing_end_date
+         ,  acc_res.billed_date
+         ,  acc_res.exclude_from_billing_flag
+         ,  acc_res.description
+         ,  acc_res.prepay_months
+         ,  acc_res.spcl_price_flag
+         ,  acc_res.unit_price
+         ,  acc_res.creation_date
+         ,  acc_res.created_by
+         ,  acc_res.last_updated_by
+         ,  acc_res.last_update_login
+         ,  acc_res.last_update_date
+         ,  rd.resource_name
+         ,  rd.resource_billing_type_code
+         ,  bt_lookup.meaning
+         ,  bt_lookup.tag
+         ,  rd.unit_of_measure_code
+         ,  um_lookup.unit_of_measure
+         ,  rd.tiered_flag
+         ,  rd.include_in_monthly_fee_flag
+         ,  bil2.currency_code
+         ,  bil2.business_unit
+         ,  prd.resource_def_snid
+         ,  acc_res.voided_flag
+         ,  rd.prepay_flag
+         ,  acc_res.prepay_start_date
+         ,  acc_res.prepay_end_date
+         ,  acc_res.attribute_category
+         ,  acc_res.attribute1
+         ,  acc_res.attribute2
+         ,  acc_res.attribute3
+         ,  acc_res.attribute4
+         ,  acc_res.attribute5
+         ,  acc_res.attribute6
+         ,  acc_res.attribute7
+         ,  acc_res.attribute8
+         ,  acc_res.attribute9
+         ,  acc_res.attribute10
+         ,  acc_res.attribute11
+         ,  acc_res.attribute12
+         ,  acc_res.attribute13
+         ,  acc_res.attribute14
+         ,  acc_res.attribute15
+         ,  ( SELECT name
+                FROM xxrs.xxrs_sc_service_def ser
+               WHERE ser.service_id = acc_res.service_id )
+              service_name                                                                                                        
+         ,  acc_res.service_id                                                                                                     
+         ,  rd.enable_services                                                                                                     
+      FROM xxrs.xxrs_sc_account_resource_tbl acc_res
+         , xxrs.xxrs_sc_product_rsrc_def_tbl prd
+         , xxrs.xxrs_sc_resource_def_tbl rd
+         , apps.xxrs_sc_lookup_vw bt_lookup
+         , inv.mtl_units_of_measure_tl um_lookup
+         , xxrs.xxrs_sc_account_product_tbl acc_prod
+         , apps.xxrs_sc_cust_bil2_sites_org_vw bil2
+     WHERE acc_res.product_resource_def_snid = prd.product_resource_def_snid
+       AND prd.resource_def_snid = rd.resource_def_snid
+       AND acc_prod.account_product_snid = acc_res.account_product_snid
+       AND rd.resource_billing_type_code = bt_lookup.lookup_code(+)
+       AND bt_lookup.lookup_type(+) = 'XXRS_SC_RESOURCE_BILLING_TYPE'
+       AND rd.unit_of_measure_code = um_lookup.uom_code(+)
+       AND acc_prod.cust_acct_site_id = bil2.cust_acct_site_id
+       AND acc_res.account_product_snid = acc_prod.account_product_snid
+  ORDER BY acc_res.billing_start_date;

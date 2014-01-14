@@ -1,0 +1,97 @@
+#!/bin/ksh
+# /*********************************************************************************************************
+# * NAME : XXRSFNDFTCOP.prog                                                                               *
+# *                                                                                                        *
+# * DESCRIPTION : Used by Rackspace Fetch Concurrent Program Output (conc program). Zips the output files  *
+# *                                                                                                        *
+# * AUTHOR       : Vinodh Bhasker                                                                          *
+# * DATE WRITTEN : 11-APR-2013                                                                             *
+# *                                                                                                        *
+# * CHANGE CONTROL :                                                                                       *
+# * Ver#  | REF#         | WHO             |   DATE      | REMARKS                                         *
+# *--------------------------------------------------------------------------------------------------------*
+# * 1.0.0 | 130325-07733 | Vinodh Bhasker  | 11-APR-2013 | Initial Creation                                *
+# *********************************************************************************************************/
+#  /* $Header: XXRSFNDFTCOP.prog 1.0.0 11-APR-2013 12:34:00 AM Vinodh Bhasker $ */
+
+echo "-----------------------------------------------------------------------"
+echo "Time: "`date '+%C%y%m%d%H%M%S'`
+echo "-----------------------------------------------------------------------"
+echo " "
+#
+# ----------------------------------------------------------------------------
+# Getting the parameter from the program
+# ----------------------------------------------------------------------------
+#
+p_output_file_location=${5}
+p_file_name_with_ext=${6}.zip
+p_output_directory=`eval echo "${7}"`
+#
+echo "-----------------------------------------------------------------------"
+echo "Parameters being passed to the Job:"
+echo " "
+echo "Request Output Location = ${p_output_file_location}"
+echo "Zip File Name           = ${p_file_name_with_ext}"
+echo "Zip File Location       = ${p_output_directory}"
+echo " "
+#
+# -----------------------------------------------------------------------------------------
+# Check if any zip files are older than 30 days and delete those files to reclaim space
+# -----------------------------------------------------------------------------------------
+#
+echo " "
+echo "---------------------------------------------------------------------------------"
+echo " Purging files older than 30 days from archive folder."
+echo " "
+#
+    find $UPLOAD_DIR/ -ctime +30 -name '*.zip' -exec rm {} \;
+#
+# ------------------------------------------------------------------------------------
+# Change to the Zip File location to start Zip 
+# ------------------------------------------------------------------------------------
+#
+    cd ${p_output_directory}
+#
+# remove exiting xml response file  
+echo " "
+echo " Removing any zip file with same name at the destination location"
+echo " "
+#
+    rm -f ${p_file_name_with_ext}
+#
+echo "---------------------------------------------------------------------------------"
+echo " Zipping the outfile in the destination location"
+echo " "
+#
+    l_file_name=`echo ${p_output_file_location} | sed 's/.*\///'`
+    echo "File name is : ${l_file_name}"
+#
+# Get the extension of the file to check if it is named as EXCEL. Then it need to be changed to .xls
+#
+    l_file_ext=`echo ${p_output_file_location} | sed 's/.*\.//'`
+#
+    if [ ${l_file_ext} = "EXCEL" ]; then
+       l_file_name_no_ext=`echo ${l_file_name} | sed s/.EXCEL\$//`
+       l_file_name=${l_file_name_no_ext}.xls
+    fi
+#
+    cp ${p_output_file_location} ./${l_file_name}
+    zip ${p_file_name_with_ext} ${l_file_name}
+#
+    if [ "$?" != "0" -a  "$?" != "2" ]; then
+#
+        echo "---------------------------------------------------------------------------------"
+        echo " ERROR!!! while zipping the file in the output directory"
+        echo "---------------------------------------------------------------------------------"
+        rm -f ${p_file_name_with_ext}
+        exit 1
+    fi
+#
+# clean up the copied file from output
+#
+    rm -f ${l_file_name}
+#
+echo "---------------------------------------------------------------------------------"
+echo " Process completed successfully."
+echo "---------------------------------------------------------------------------------"
+echo " "
