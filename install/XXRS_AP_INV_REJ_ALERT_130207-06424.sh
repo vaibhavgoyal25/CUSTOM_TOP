@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #************************************************************************************************************+
-#--File Name          :       XXRS_AP_INV_REJ_ALERT_130207-06424.sh                                          |
+#--File Name          :       XXRS_AP_INV_REJ_ALERT_130207-06424.sh  avcd                                       |
 #--Program Purpose    :       Installation script for 'Rackspace Payables Invoice Rejection Alert'           |
 #--Author Name        :       Vaibhav Goyal                                                                  |
 #--Initial Build Date :       13-MAR-2013                                                                    |
