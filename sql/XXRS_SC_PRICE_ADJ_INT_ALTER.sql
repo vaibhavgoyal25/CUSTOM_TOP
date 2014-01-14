@@ -1,7 +1,7 @@
 Alter 
    /**********************************************************************************************************************
    *                                                                                                                     *
-   * NAME : XXRS_SC_PRICE_ADJ_INT_ALTER.sql                                                                              *
+   * NAME : XXRS_SC_PRICE_ADJ_INT_ALTER.sql  140114-11113                                                                *
    *                                                                                                                     *
    * DESCRIPTION :                                                                                                       *
    * Script to Add columns to xxrs.xxrs_sc_price_adj_int for renewals.                                                   *
