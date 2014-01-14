@@ -1,0 +1,448 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+64 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afcprset.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "afcprset.lct 120.2.12010000.1"
+
+#Source Database SCAR
+
+#RELEASE_NAME 12.1.3
+
+# -- Begin Entity Definitions -- 
+
+DEFINE REQ_SET_LINKS
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(50)
+  KEY   REQUEST_SET_NAME                VARCHAR2(30)
+  BASE  RSET                            REFERENCES REQ_SET
+  CTX   OWNER                           VARCHAR2(4000)
+  BASE  START_STAGE_NAME                VARCHAR2(30)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+  DEFINE STAGE_LINKS
+    KEY   STAGE_NAME                      VARCHAR2(30)
+    CTX   OWNER                           VARCHAR2(4000)
+    BASE  SUCCESS_LINK                    VARCHAR2(30)
+    BASE  WARNING_LINK                    VARCHAR2(30)
+    BASE  ERROR_LINK                      VARCHAR2(30)
+    BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  END STAGE_LINKS
+END REQ_SET_LINKS
+
+DEFINE REQ_SET
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(50)
+  KEY   REQUEST_SET_NAME                VARCHAR2(30)
+  CTX   OWNER                           VARCHAR2(4000)
+  BASE  ALLOW_CONSTRAINTS_FLAG          VARCHAR2(1)
+  BASE  PRINT_TOGETHER_FLAG             VARCHAR2(1)
+  BASE  START_DATE_ACTIVE               VARCHAR2(11)
+  BASE  START_STAGE_NAME                VARCHAR2(30)
+  BASE  END_DATE_ACTIVE                 VARCHAR2(11)
+  BASE  CONCURRENT_PROGRAM_NAME         VARCHAR2(30)
+  BASE  OWNER_USER_NAME                 VARCHAR2(100)
+  BASE  PRINTER                         VARCHAR2(30)
+  BASE  PRINT_STYLE                     VARCHAR2(30)
+  TRANS USER_REQUEST_SET_NAME           VARCHAR2(240)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+  DEFINE STAGE
+    KEY   STAGE_NAME                      VARCHAR2(30)
+    CTX   OWNER                           VARCHAR2(4000)
+    BASE  CRITICAL                        VARCHAR2(1)
+    BASE  OUTCOME                         VARCHAR2(1)
+    BASE  ALLOW_CONSTRAINTS_FLAG          VARCHAR2(1)
+    BASE  DISPLAY_SEQUENCE                VARCHAR2(50)
+    BASE  FUNCTION_APPLICATION            VARCHAR2(50)
+    BASE  FUNCTION                        VARCHAR2(30)
+    BASE  SUCCESS_LINK                    VARCHAR2(30)
+    BASE  WARNING_LINK                    VARCHAR2(30)
+    BASE  ERROR_LINK                      VARCHAR2(30)
+    BASE  CONCURRENT_PROGRAM_NAME         VARCHAR2(30)
+    TRANS USER_STAGE_NAME                 VARCHAR2(240)
+    TRANS DESCRIPTION                     VARCHAR2(240)
+    BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+    DEFINE STAGE_PROG
+      KEY   SEQUENCE                        VARCHAR2(50)
+      CTX   OWNER                           VARCHAR2(4000)
+      BASE  PROGRAM_APPLICATION             VARCHAR2(50)
+      BASE  PROGRAM_NAME                    VARCHAR2(30)
+      BASE  NLS_LANGUAGE                    VARCHAR2(30)
+      BASE  NLS_TERRITORY                   VARCHAR2(30)
+      BASE  CRITICAL                        VARCHAR2(1)
+      BASE  NUMBER_OF_COPIES                VARCHAR2(50)
+      BASE  PRINTER                         VARCHAR2(30)
+      BASE  PRINT_STYLE                     VARCHAR2(30)
+      BASE  SAVE_OUTPUT_FLAG                VARCHAR2(1)
+      BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+      DEFINE PROG_ARGS
+        KEY   DESC_FLEX_APPL                  VARCHAR2(50)
+        KEY   DESC_FLEX_NAME                  VARCHAR2(50)
+        KEY   COL_NAME                        VARCHAR2(30)
+        CTX   OWNER                           VARCHAR2(4000)
+        BASE  DISPLAY_FLAG                    VARCHAR2(1)
+        BASE  INSERT_FLAG                     VARCHAR2(1)
+        BASE  UPDATE_FLAG                     VARCHAR2(1)
+        BASE  DEFAULT_TYPE                    VARCHAR2(1)
+        BASE  DEFAULT_VALUE                   VARCHAR2(2000)
+        BASE  SHARED_PARAMETER_NAME           VARCHAR2(30)
+        BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+      END PROG_ARGS
+    END STAGE_PROG
+  END STAGE
+END REQ_SET
+
+# -- End Entity Definitions -- 
+
+
+BEGIN REQ_SET "XXRS" "XXRSIEXUKSCORING"
+  OWNER = "SUDHEER"
+  ALLOW_CONSTRAINTS_FLAG = "Y"
+  PRINT_TOGETHER_FLAG = "N"
+  START_DATE_ACTIVE = "2011/12/23"
+  START_STAGE_NAME = "STAGE_10"
+  CONCURRENT_PROGRAM_NAME = "XXRSIEXUKSCORING"
+  USER_REQUEST_SET_NAME =
+ "Rackspace UK Collections Scoring and Strategy Process Request Set"
+  DESCRIPTION =
+ "Rackspace UK Collections Scoring and Strategy Process Request Set"
+  LAST_UPDATE_DATE = "2011/12/23"
+
+  BEGIN STAGE "STAGE_10"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "Y"
+    DISPLAY_SEQUENCE = "10"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE_20"
+    CONCURRENT_PROGRAM_NAME = "STAGE_10"
+    USER_STAGE_NAME = "Refresh AR Transactions Summary Tables"
+    DESCRIPTION = "Refresh AR Transactions Summary Tables"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "AR"
+      PROGRAM_NAME = "ARSUMREF"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE_20"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "Y"
+    DISPLAY_SEQUENCE = "20"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE_30"
+    USER_STAGE_NAME = "IEX: Promise Reconciliation"
+    DESCRIPTION = "IEX: Promise Reconciliation"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "20"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "IEX"
+      PROGRAM_NAME = "IEX_PROCESS_PROMISES"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_PROCESS_PROMISES" "ATTRIBUTE1"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "Rackspace UK - Operating Unit"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE_30"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "Y"
+    DISPLAY_SEQUENCE = "30"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE_35"
+    WARNING_LINK = "STAGE_35"
+    ERROR_LINK = "STAGE_35"
+    CONCURRENT_PROGRAM_NAME = "STAGE_30"
+    USER_STAGE_NAME = "IEX: Scoring Engine Harness"
+    DESCRIPTION = "IEX: Scoring Engine Harness"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "30"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "IEX"
+      PROGRAM_NAME = "IEX_SCORE_OBJECTS"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_SCORE_OBJECTS" "ATTRIBUTE6"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "Rackspace UK - Operating Unit"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_SCORE_OBJECTS" "ATTRIBUTE1"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "2"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_SCORE_OBJECTS" "ATTRIBUTE2"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "10040"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE_35"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "Y"
+    DISPLAY_SEQUENCE = "35"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "Stage 35"
+    WARNING_LINK = "Stage 35"
+    ERROR_LINK = "Stage 35"
+    CONCURRENT_PROGRAM_NAME = "STAGE_35"
+    USER_STAGE_NAME = "IEX: Scoring Engine Harness for Multi Org"
+    DESCRIPTION = "IEX: Scoring Engine Harness for Multi Org"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "35"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "IEX"
+      PROGRAM_NAME = "IEX_SCORE_OBJECTS"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_SCORE_OBJECTS" "ATTRIBUTE6"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "Rackspace UK - Operating Unit"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_SCORE_OBJECTS" "ATTRIBUTE1"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "10020"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "Stage 35"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "35"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE_40"
+    WARNING_LINK = "STAGE_40"
+    ERROR_LINK = "STAGE_40"
+    USER_STAGE_NAME = "Rackspace Close/Update Strategy Process"
+    DESCRIPTION = "Process to Close/Update Collections Strategies"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "XXRS"
+      PROGRAM_NAME = "XXRSIEXSTR"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE_40"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "Y"
+    DISPLAY_SEQUENCE = "40"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE_50"
+    CONCURRENT_PROGRAM_NAME = "STAGE_40"
+    USER_STAGE_NAME = "IEX:  Strategy Management"
+    DESCRIPTION = "IEX:  Strategy Management"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "40"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "IEX"
+      PROGRAM_NAME = "IEX_CREATE_STRATEGY"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_CREATE_STRATEGY" "ATTRIBUTE1"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "Rackspace UK - Operating Unit"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE_50"
+    OWNER = "MANOHAR"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "Y"
+    DISPLAY_SEQUENCE = "50"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    CONCURRENT_PROGRAM_NAME = "STAGE_50"
+    USER_STAGE_NAME = "IEX: Populate UWQ Summary Table"
+    DESCRIPTION = "IEX: Populate UWQ Summary Table"
+    LAST_UPDATE_DATE = "2011/12/23"
+  
+    BEGIN STAGE_PROG "50"
+      OWNER = "MANOHAR"
+      PROGRAM_APPLICATION = "IEX"
+      PROGRAM_NAME = "IEX_POPULATE_UWQ_SUM"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2011/12/23"
+    
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_POPULATE_UWQ_SUM" "ATTRIBUTE3"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "Rackspace UK - Operating Unit"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "IEX" "$SRS$.IEX_POPULATE_UWQ_SUM" "ATTRIBUTE1"
+        OWNER = "ANEESH"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        LAST_UPDATE_DATE = "2012/02/20"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+END REQ_SET
+
+BEGIN REQ_SET_LINKS "XXRS" "XXRSIEXUKSCORING"
+  RSET = "XXRS" "XXRSIEXUKSCORING"
+  OWNER = "SUDHEER"
+  START_STAGE_NAME = "STAGE_10"
+  LAST_UPDATE_DATE = "2011/12/23"
+
+  BEGIN STAGE_LINKS "STAGE_10"
+    OWNER = "MANOHAR"
+    SUCCESS_LINK = "STAGE_20"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+  BEGIN STAGE_LINKS "STAGE_20"
+    OWNER = "MANOHAR"
+    SUCCESS_LINK = "STAGE_30"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+  BEGIN STAGE_LINKS "STAGE_30"
+    OWNER = "MANOHAR"
+    SUCCESS_LINK = "STAGE_35"
+    WARNING_LINK = "STAGE_35"
+    ERROR_LINK = "STAGE_35"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+  BEGIN STAGE_LINKS "STAGE_35"
+    OWNER = "MANOHAR"
+    SUCCESS_LINK = "Stage 35"
+    WARNING_LINK = "Stage 35"
+    ERROR_LINK = "Stage 35"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+  BEGIN STAGE_LINKS "Stage 35"
+    OWNER = "MANOHAR"
+    SUCCESS_LINK = "STAGE_40"
+    WARNING_LINK = "STAGE_40"
+    ERROR_LINK = "STAGE_40"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+  BEGIN STAGE_LINKS "STAGE_40"
+    OWNER = "MANOHAR"
+    SUCCESS_LINK = "STAGE_50"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+  BEGIN STAGE_LINKS "STAGE_50"
+    OWNER = "MANOHAR"
+    LAST_UPDATE_DATE = "2011/12/23"
+  END STAGE_LINKS
+  
+END REQ_SET_LINKS
+

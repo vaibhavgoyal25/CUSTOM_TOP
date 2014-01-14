@@ -1,0 +1,207 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/aflvmlu.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "aflvmlu.lct 120.0.12010000.1"
+
+#Source Database DEV
+
+#RELEASE_NAME 12.1.3
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FND_LOOKUP_TYPE
+  KEY   VIEW_APPSNAME                   VARCHAR2(50)
+  KEY   LOOKUP_TYPE                     VARCHAR2(30)
+  CTX   APPLICATION_SHORT_NAME          VARCHAR2(50)
+  BASE  CUSTOMIZATION_LEVEL             VARCHAR2(1)
+  CTX   OWNER                           VARCHAR2(4000)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS MEANING                         VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+
+  DEFINE FND_LOOKUP_VALUE
+    KEY   LOOKUP_CODE                     VARCHAR2(30)
+    BASE  ENABLED_FLAG                    VARCHAR2(1)
+    BASE  START_DATE_ACTIVE               VARCHAR2(10)
+    BASE  END_DATE_ACTIVE                 VARCHAR2(10)
+    BASE  TERRITORY_CODE                  VARCHAR2(2)
+    BASE  TAG                             VARCHAR2(150)
+    BASE  ATTRIBUTE_CATEGORY              VARCHAR2(30)
+    BASE  ATTRIBUTE1                      VARCHAR2(150)
+    BASE  ATTRIBUTE2                      VARCHAR2(150)
+    BASE  ATTRIBUTE3                      VARCHAR2(150)
+    BASE  ATTRIBUTE4                      VARCHAR2(150)
+    BASE  ATTRIBUTE5                      VARCHAR2(150)
+    BASE  ATTRIBUTE6                      VARCHAR2(150)
+    BASE  ATTRIBUTE7                      VARCHAR2(150)
+    BASE  ATTRIBUTE8                      VARCHAR2(150)
+    BASE  ATTRIBUTE9                      VARCHAR2(150)
+    BASE  ATTRIBUTE10                     VARCHAR2(150)
+    BASE  ATTRIBUTE11                     VARCHAR2(150)
+    BASE  ATTRIBUTE12                     VARCHAR2(150)
+    BASE  ATTRIBUTE13                     VARCHAR2(150)
+    BASE  ATTRIBUTE14                     VARCHAR2(150)
+    BASE  ATTRIBUTE15                     VARCHAR2(150)
+    CTX   OWNER                           VARCHAR2(4000)
+    BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+    TRANS MEANING                         VARCHAR2(80)
+    TRANS DESCRIPTION                     VARCHAR2(240)
+  END FND_LOOKUP_VALUE
+END FND_LOOKUP_TYPE
+
+# -- End Entity Definitions -- 
+
+
+BEGIN FND_LOOKUP_TYPE "FND" "ZX_EXEMPTION_REASON_CODE"
+  APPLICATION_SHORT_NAME = "ZX"
+  CUSTOMIZATION_LEVEL = "E"
+  OWNER = "ORACLE12.1.3"
+  LAST_UPDATE_DATE = "2006/10/13"
+  MEANING = "eBTax Exemption Reason Code List"
+  DESCRIPTION = "Exemption Reason Code List"
+
+  BEGIN FND_LOOKUP_VALUE "3RD-PARTY"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "3rd Party"
+    DESCRIPTION = "3rd Party"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "DIRECT PAY"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "Direct Pay"
+    DESCRIPTION = "Direct Pay"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EDUCATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "Education"
+    DESCRIPTION = "Education"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HIGH-TECH"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "Qualified High Technology Company"
+    DESCRIPTION = "Qualified High Technology Company"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "MANUFACTURER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "Government"
+    DESCRIPTION = "Government"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "RESALE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "Resale"
+    DESCRIPTION = "Resale"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "NON-PROFIT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "Non-Profit"
+    DESCRIPTION = "Non-Profit"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "M ACCOUNT – TAX INCLUDED"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2012/04/20"
+    MEANING = "M Account – Tax Included"
+    DESCRIPTION = "M Account – Tax Included"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "RESEARCH"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "1952/01/01"
+    END_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "AMAKHIJA"
+    LAST_UPDATE_DATE = "2012/04/22"
+    MEANING = "Research"
+    DESCRIPTION = "Research"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "R10UPGRADE"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "1952/01/01"
+    END_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "AMAKHIJA"
+    LAST_UPDATE_DATE = "2012/04/22"
+    MEANING = "R10upgrade"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HOSPITAL"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "1952/01/01"
+    END_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "AMAKHIJA"
+    LAST_UPDATE_DATE = "2012/04/22"
+    MEANING = "Hospital"
+    DESCRIPTION = "Hospital"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "REVERSE CHARGE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1950/01/01"
+    TAG = "Y"
+    OWNER = "AMAKHIJA"
+    LAST_UPDATE_DATE = "2012/04/22"
+    MEANING = "Reverse Charge"
+    DESCRIPTION = "Reverse Charge"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OUTSIDE THE SCOPE OF VAT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1950/01/01"
+    TAG = "Y"
+    OWNER = "AMAKHIJA"
+    LAST_UPDATE_DATE = "2012/04/22"
+    MEANING = "Outside the scope of VAT"
+    DESCRIPTION = "Outside the scope of VAT"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OUTSIDE THE SCOPE OF GST"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "1952/01/01"
+    TAG = "Y"
+    OWNER = "VINODH.BHASKER"
+    LAST_UPDATE_DATE = "2012/10/18"
+    MEANING = "Outside the scope of GST"
+    DESCRIPTION = "Outside the scope of GST"
+  END FND_LOOKUP_VALUE
+  
+END FND_LOOKUP_TYPE
+

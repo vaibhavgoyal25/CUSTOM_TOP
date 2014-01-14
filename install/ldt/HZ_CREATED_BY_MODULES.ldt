@@ -1,0 +1,1440 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/aflvmlu.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "aflvmlu.lct 120.0.12010000.1"
+
+#Source Database PATCH
+
+#RELEASE_NAME 12.1.3
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FND_LOOKUP_TYPE
+  KEY   VIEW_APPSNAME                   VARCHAR2(50)
+  KEY   LOOKUP_TYPE                     VARCHAR2(30)
+  CTX   APPLICATION_SHORT_NAME          VARCHAR2(50)
+  BASE  CUSTOMIZATION_LEVEL             VARCHAR2(1)
+  CTX   OWNER                           VARCHAR2(4000)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS MEANING                         VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+
+  DEFINE FND_LOOKUP_VALUE
+    KEY   LOOKUP_CODE                     VARCHAR2(30)
+    BASE  ENABLED_FLAG                    VARCHAR2(1)
+    BASE  START_DATE_ACTIVE               VARCHAR2(10)
+    BASE  END_DATE_ACTIVE                 VARCHAR2(10)
+    BASE  TERRITORY_CODE                  VARCHAR2(2)
+    BASE  TAG                             VARCHAR2(150)
+    BASE  ATTRIBUTE_CATEGORY              VARCHAR2(30)
+    BASE  ATTRIBUTE1                      VARCHAR2(150)
+    BASE  ATTRIBUTE2                      VARCHAR2(150)
+    BASE  ATTRIBUTE3                      VARCHAR2(150)
+    BASE  ATTRIBUTE4                      VARCHAR2(150)
+    BASE  ATTRIBUTE5                      VARCHAR2(150)
+    BASE  ATTRIBUTE6                      VARCHAR2(150)
+    BASE  ATTRIBUTE7                      VARCHAR2(150)
+    BASE  ATTRIBUTE8                      VARCHAR2(150)
+    BASE  ATTRIBUTE9                      VARCHAR2(150)
+    BASE  ATTRIBUTE10                     VARCHAR2(150)
+    BASE  ATTRIBUTE11                     VARCHAR2(150)
+    BASE  ATTRIBUTE12                     VARCHAR2(150)
+    BASE  ATTRIBUTE13                     VARCHAR2(150)
+    BASE  ATTRIBUTE14                     VARCHAR2(150)
+    BASE  ATTRIBUTE15                     VARCHAR2(150)
+    CTX   OWNER                           VARCHAR2(4000)
+    BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+    TRANS MEANING                         VARCHAR2(80)
+    TRANS DESCRIPTION                     VARCHAR2(240)
+  END FND_LOOKUP_VALUE
+END FND_LOOKUP_TYPE
+
+# -- End Entity Definitions -- 
+
+
+BEGIN FND_LOOKUP_TYPE "AR" "HZ_CREATED_BY_MODULES"
+  APPLICATION_SHORT_NAME = "AR"
+  CUSTOMIZATION_LEVEL = "U"
+  OWNER = "ORACLE12.1.3"
+  LAST_UPDATE_DATE = "2002/09/14"
+  MEANING = "Modules Used to Create TCA Data"
+  DESCRIPTION =
+ "Identifies a registered list of modules, for example APIs, that call the TCA Public APIs to create party related information."
+
+  BEGIN FND_LOOKUP_VALUE "ONT_TELESALES_INTEGRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/12/11"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2002/12/11"
+    MEANING = "OM Telesales Integration"
+    DESCRIPTION =
+ "Integration between Order Management and Telesales E-Business Center"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ONT_OI_ADD_CUSTOMER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/12/11"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2002/12/11"
+    MEANING = "OM Order Import"
+    DESCRIPTION = "Order Management Order Import"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ONT_UI_ADD_CUSTOMER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/12/11"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2002/12/11"
+    MEANING = "OM Add Customer form"
+    DESCRIPTION = "Order Management Add Customer form"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_GEO_HIERARCHY"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2003/04/02"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/04/02"
+    MEANING = "TCA Geography Hierarchy"
+    DESCRIPTION = "Created by the TCA Geography Hierarchy feature"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "FND_OID_SYNCH"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2003/08/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/08/05"
+    MEANING = "OID User Synchronization"
+    DESCRIPTION =
+ "Used by ATG to synchronize user information between OID and TCA"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_PERSON_REGISTRY_SERVICES"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/09/01"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare EMPI Person Parties"
+    DESCRIPTION = "Healthcare EMPI Person Parties"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_STAFF_REGISTRATION"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Staff Registration"
+    DESCRIPTION = "Healthcare Staff Registration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_PAYER_REGISTRY"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Payer Registry"
+    DESCRIPTION = "Healthcare Payer Registry"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_PATIENT_REGISTRATION"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Patient Registration"
+    DESCRIPTION = "Healthcare Patient Registration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_PATIENT_LIST"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Patient List"
+    DESCRIPTION = "Healthcare Patient List"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_ORGANIZATION_MGMT"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Organization Management"
+    DESCRIPTION = "Healthcare Organization Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_EMPLOYER_REGISTRY"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Employer Registry"
+    DESCRIPTION = "Healthcare Employer Registry"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CTB_ENCOUNTER_MGMT"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2002/12/18"
+    END_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/11/05"
+    MEANING = "Healthcare Encounter Management"
+    DESCRIPTION = "Healthcare Encounter Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_IMPORT"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2003/11/04"
+    END_DATE_ACTIVE = "2003/12/04"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2003/12/10"
+    MEANING = "TCA  Bulk Import Program"
+    DESCRIPTION = "TCA Bulk Import Program"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_V2_API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/05/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/05/19"
+    MEANING = "TCA v2 Public API"
+    DESCRIPTION = "TCA Version 2 Public API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "RRS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/07/14"
+    MEANING = "Site Management"
+    DESCRIPTION = "Site Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AML_LEAD_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Leads Management"
+    DESCRIPTION = "Lead Import in Oracle Lead Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AMS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Marketing Online"
+    DESCRIPTION = "Marketing Online"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AMS_EVENT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Marketing Events"
+    DESCRIPTION = "Marketing Events"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AMS_LIST_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Marketing List Import"
+    DESCRIPTION = "Marketing List Import"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ARI"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iReceivables"
+    DESCRIPTION = "iReceivables"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ASL_SALES_SYNC"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Sales Offline Synchronization"
+    DESCRIPTION = "Sales Offline Synchronization"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_AC_DTL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "TeleSales Account Details"
+    DESCRIPTION = "TeleSales Account Details"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_AD_CPT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "TeleSales Restrictions"
+    DESCRIPTION = "TeleSales Restrictions"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_CD_DTL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "TeleSales Person Detail"
+    DESCRIPTION = "TeleSales Person Detail"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_CU_CRE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "TeleSales Quick Party Create"
+    DESCRIPTION = "TeleSales Quick Party Create"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_CU_DTL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "TeleSales Organization Detail"
+    DESCRIPTION = "TeleSales Organization Detail"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_RC_ALL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "TeleSales e-Business Center"
+    DESCRIPTION = "TeleSales e-Business Center"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "BLC"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "BLC Customer/Site Management"
+    DESCRIPTION = "BLC Customer/Site Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CAC_SYNC"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Service Management Synchronization"
+    DESCRIPTION =
+ "Record created from user's PDA or Outlook in to Oracle Applications through synchronization program."
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CHECKOUT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore Checkout"
+    DESCRIPTION = "iStore Checkout"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CONTACT POINT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore Contact Point"
+    DESCRIPTION = "iStore Contact Point"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSCCCCRC"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Customer Care Contact Center"
+    DESCRIPTION = "Customer Care Contact Center"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSDSR"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Depot Repair Service Request"
+    DESCRIPTION = "Depot Repair Service Request"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSFDEAR"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Field Service Departure and Arrival Tasks"
+    DESCRIPTION = "Field Service Departure and Arrival Tasks"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSN_AGT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Contact Center HTML"
+    DESCRIPTION = "Contact Center HTML"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSPSHIPAD"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Spares Management Ship-To Address for Resource"
+    DESCRIPTION = "Spares Management Ship-To Address for Resource"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "DNB_DFS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture DNB hierarchy"
+    DESCRIPTION = "Trading Community Architecture DNB hierarchy"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EGO"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Advanced Product Catalog"
+    DESCRIPTION = "Advanced Product Catalog"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HTML_ADMIN_UI"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Administration UI"
+    DESCRIPTION = "Trading Community Architecture Administration UI"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_COPY_SCRIPT_CREATED"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Copy Relationships"
+    DESCRIPTION = "Trading Community Architecture Copy Relationships"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_RM"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Relationship Manager"
+    DESCRIPTION = "Trading Community Architecture Relationship Manager"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_TCA_CUSTOMER_MERGE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Customer Merge"
+    DESCRIPTION = "Trading Community Architecture Customer Merge"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBE_CUSTOMER_DATA"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore Customer Data"
+    DESCRIPTION = "iStore Customer Data"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBU_ACCOUNT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iSupport Profile: Account"
+    DESCRIPTION = "iSupport Profile: Account"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBU_CONTACT_POINT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iSupport Profile: Contact Point"
+    DESCRIPTION = "iSupport Profile: Contact Point"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBU_EMAIL_SUBSCRIPTION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iSupport Profile: E-Mail Subscription"
+    DESCRIPTION = "iSupport Profile: E-Mail Subscription"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBU_LOCATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iSupport Profile: Addresses: Location"
+    DESCRIPTION = "iSupport Profile: Addresses: Location"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBU_PARTY_SITE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iSupport Profile: Addresses: Party Site"
+    DESCRIPTION = "iSupport Profile: Addresses: Party Site"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IBU_PARTY_SITE_USE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iSupport Profile: Party Site Use"
+    DESCRIPTION = "iSupport Profile: Party Site Use"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections"
+    DESCRIPTION = "Collections"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_AGENT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Agent"
+    DESCRIPTION = "Collections Agent"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_COLLECTIONS_CONTACT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Contact"
+    DESCRIPTION = "Collections Contact"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_DISPUTES"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Disputes"
+    DESCRIPTION = "Collections Disputes"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_DUNNING_CONTACT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Dunning Contact"
+    DESCRIPTION = "Collections Dunning Contact"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_PAYMENTS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Payments"
+    DESCRIPTION = "Collections Payments"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_PROMISES"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Promises"
+    DESCRIPTION = "Collections Promises"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IEX_TERRITORY"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Collections Territory"
+    DESCRIPTION = "Collections Territory"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGF"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Financial Aid"
+    DESCRIPTION = "Student System Financial Aid"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGF_FFELP_UPLOAD"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Financial Aid FFELP Upload"
+    DESCRIPTION = "Student System Financial Aid FFELP Upload"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGF_ISIR_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Financial Aid ISIR Import Process"
+    DESCRIPTION = "Student System Financial Aid ISIR Import Process"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGF_PROFILE_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Financial Aid Profile Import Process"
+    DESCRIPTION = "Student System Financial Aid Profile Import Process"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGF_SS_APPLICATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Financial Aid Self Service Application"
+    DESCRIPTION = "Student System Financial Aid Self Service Application"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGP"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Personal Portfolio"
+    DESCRIPTION = "Personal Portfolio"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGR"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student Recruiting"
+    DESCRIPTION = "Student Recruiting"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGR_FRM_APPLICATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student Recruiting Prospect Form Application"
+    DESCRIPTION = "Student Recruiting Prospect Form Application"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGR_SS_APPLICATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student Recruiting Prospect Self Service Application"
+    DESCRIPTION = "Student Recruiting Prospect Self Service Application"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System"
+    DESCRIPTION = "Student System"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_APPLICATION_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Application Import Process"
+    DESCRIPTION = "Student System Application Import Process"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_FRM_APPLICATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Form Application"
+    DESCRIPTION = "Student System Form Application"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_INST_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Institution Import Process"
+    DESCRIPTION = "Student System Institution Import Process"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_SS_APPLICATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Self Service Application"
+    DESCRIPTION = "Student System Self Service Application"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_SS_SECURITY"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System Security"
+    DESCRIPTION = "Student System Security"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_USER_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System User Import Process"
+    DESCRIPTION = "Student System User Import Process"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGS_USER_REG"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Student System New User Registration"
+    DESCRIPTION = "Student System New User Registration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGW"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Grants Proposal"
+    DESCRIPTION = "Grants Proposal"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "LNS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Loans"
+    DESCRIPTION = "Loans"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OKL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Lease Management"
+    DESCRIPTION = "Lease Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OKLVSS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Lease Management Vendor Self Service"
+    DESCRIPTION = "Lease Management Vendor Self Service"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OLMENR"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Learning Management Enrollment"
+    DESCRIPTION = "Learning Management Enrollment"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ORGANIZATION PROFILE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore Organization Profile"
+    DESCRIPTION = "iStore Organization Profile"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OSO_CUSTOMER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Sales Online Customer"
+    DESCRIPTION = "Sales Online Customer"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OZF_RESALE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trade Management Indirect Sales"
+    DESCRIPTION = "Trade Management Indirect Sales"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OZF_SPECIAL_PRICING"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trade Management Special Pricing Requests"
+    DESCRIPTION = "Trade Management Special Pricing Requests"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "PV"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Partner Management Flows"
+    DESCRIPTION = "Partner Management Flows"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "PVDEALRN"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Partner Management Partner Deal Registration Flow"
+    DESCRIPTION = "Partner Management Partner Deal Registration Flow"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "PVREFFRL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Partner Management Partner Referral Flow"
+    DESCRIPTION = "Partner Management Partner Referral Flow"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "QLTSEC"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Quality Collection Plan Security"
+    DESCRIPTION = "Quality Collection Plan Security"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "SALES"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Sales"
+    DESCRIPTION = "Sales"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "SHARED CARTS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore Shared Cart"
+    DESCRIPTION = "iStore Shared Cart"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "SR"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Service Request"
+    DESCRIPTION = "Service Request"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA-MIXNMATCH-CONCPROGRAM"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Third Party Data Integration"
+    DESCRIPTION = "Trading Community Architecture Third Party Data Integration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_BASE_UPGRADE_SCRIPT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Base Upgrade Script"
+    DESCRIPTION = "Trading Community Architecture Base Upgrade Script"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_MIGRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Data Migration Script"
+    DESCRIPTION = "Trading Community Architecture Data Migration Script"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_MOSR_API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Trading Community Architecture Source System Management API"
+    DESCRIPTION = "Trading Community Architecture Source System Management API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "UMX"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "User Management"
+    DESCRIPTION = "User Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "USER MANAGEMENT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore User Management"
+    DESCRIPTION = "iStore User Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "USER PROFILE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore User Profile"
+    DESCRIPTION = "iStore User Profile"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "USER REGISTRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore User Registration"
+    DESCRIPTION = "iStore User Registration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "USER_REGISTRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/08/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "iStore User Registration "
+    DESCRIPTION = "iStore User Registration "
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "WSH"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/08/19"
+    MEANING = "Shipping Execution"
+    DESCRIPTION = "Shipping Execution"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AP_BASE_UPGRADE_SCRIPT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Payables Suppliers Upgrade Script"
+    DESCRIPTION = "Payables Suppliers Upgrade Script"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AP_SUPPLIERS_API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Payables Suppliers API"
+    DESCRIPTION = "Payables Suppliers API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "XLE_CREATE_LE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/28"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Legal Entity: Create Legal Entity UI"
+    DESCRIPTION = "Legal Entity: Create Legal Entity UI"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "XLE_CREATE_LA"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/28"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Legal Entity: Create LegalAuthority UI"
+    DESCRIPTION = "Legal Entity: Create LegalAuthority UI"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "XLE_CREATE_ETB"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/28"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Legal Entity: Create Establishment UI"
+    DESCRIPTION = "Legal Entity: Create Establishment UI"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_V1_API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/09/01"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture Version 1 API"
+    DESCRIPTION = "Trading Community Architecture Version 1 API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_SEED_DATA"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture Seed Data"
+    DESCRIPTION = "Trading Community Architecture Seed Data"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_FORM_WRAPPER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/09/01"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture/Receivables Forms API Call"
+    DESCRIPTION = "Trading Community Architecture/Receivables Forms API Call"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCA_DNB_MAPPING"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/09/01"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture D&B Purchase"
+    DESCRIPTION = "Trading Community Architecture Online or Bulk D&B Purchase"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "POS_USER_MGMT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Supplier User Management"
+    DESCRIPTION = "Supplier User Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "POS_SUPPLIER_MGMT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Supplier Management"
+    DESCRIPTION = "Supplier Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ORACLE_SHIPPING"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Shipping"
+    DESCRIPTION = "Shipping"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OCM"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Credit Management"
+    DESCRIPTION = "Credit Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "JTA_USER_MANAGEMENT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "JTA User Management Registration"
+    DESCRIPTION = "JTA User Management Registration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_WS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2004/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "TCA Web Service"
+    DESCRIPTION = "TCA Web Service"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_IMPORT"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2003/12/04"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture Bulk Import"
+    DESCRIPTION = "Trading Community Architecture Bulk Import"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HZ_CPUI"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2004/10/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture Common Party UI"
+    DESCRIPTION = "Trading Community Architecture Common Party UI"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HTBPERSON"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Healthcare Transaction Base Person"
+    DESCRIPTION = "Healthcare Transaction Base Person"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HTBORG"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2003/11/05"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Healthcare Transaction Base Organization"
+    DESCRIPTION = "Healthcare Transaction Base Organization"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "HR API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2002/09/01"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Human Resources"
+    DESCRIPTION = "Human Resources"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "FUN_AGIS"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Advanced Global Intercompany System"
+    DESCRIPTION = "Advanced Global Intercompany System"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ASO_CUSTOMER_DATA"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2003/04/01"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Order Capture"
+    DESCRIPTION = "Order Capture"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "BO_API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture Business Object API"
+    DESCRIPTION = "Trading Community Architecture Business Object API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Cash Management"
+    DESCRIPTION = "Cash Management"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CE_BANK_CORRECTION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Cash Management Bank Correction UI"
+    DESCRIPTION = "Cash Management Bank Correction UI"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CE_BANK_GROUPING"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Cash Management Bank Grouping"
+    DESCRIPTION = "Cash Management Bank Grouping"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CE_BANK_UPGRADE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/07/14"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Cash Management Bank Upgrade"
+    DESCRIPTION = "Cash Management Bank Upgrade"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CUST_INTERFACE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "Trading Community Architecture Customer Interface"
+    DESCRIPTION = "Trading Community Architecture Customer Interface"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EBTAX_HRMIGRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "eBTax HR Geography Migration"
+    DESCRIPTION = "eBTax Geography Migration from HR_LOCATIONS_ALL"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EBTAX_MIGRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/09/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/09/19"
+    MEANING = "eBTax Geography Migration"
+    DESCRIPTION = "eBTax Geography Migration from AR_LOCATION_VALUES"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "OKS_AUTH"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/10/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/10/24"
+    MEANING = "Service Contracts Authoring"
+    DESCRIPTION = "Contacts created from Service Contracts Authoring Form"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EBTAX_SERVICE_PROVIDER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/10/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/10/24"
+    MEANING = "eBTax Service Provider Migration"
+    DESCRIPTION = "eBTax Service Provider Migration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EBTAX_PARTNER"
+    ENABLED_FLAG = "N"
+    START_DATE_ACTIVE = "2005/09/19"
+    END_DATE_ACTIVE = "2005/10/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/10/24"
+    MEANING = "eBTax Tax Partner Migration"
+    DESCRIPTION = "eBTax Tax Partner Migration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ONT_PROCESS_ORDER_API"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/10/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/10/24"
+    MEANING = "Order Management Process Order API"
+    DESCRIPTION = "Order Management Process Order API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "ONT_TELESERVICE_INTEGRATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/10/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/10/24"
+    MEANING = "Order Management Contact Center Integration"
+    DESCRIPTION =
+ "Integration between Order Management and TeleService Contact Center"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "XLE_UPG"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/10/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/10/24"
+    MEANING = "Legal Entity Pre-Upgrade"
+    DESCRIPTION = "Legal Entity Pre-Upgrade"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EGO_IMPORT_WKBENCH"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/11/16"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/11/16"
+    MEANING = "Advanced Product Catalog Import Workbench"
+    DESCRIPTION = "Advanced Product Catalog Import Workbench"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSI"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/12/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/12/19"
+    MEANING = "Installed Base"
+    DESCRIPTION = "Installed Base"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "CSE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2005/12/19"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2005/12/19"
+    MEANING = "Oracle Asset Tracking"
+    DESCRIPTION = "Oracle Asset Tracking"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "EBTAX_CONTENT_UPLOAD"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2006/06/16"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2006/06/16"
+    MEANING = "eBTax Tax Partners Configuration Upload"
+    DESCRIPTION =
+ "Uploads Tax and Geography Data from eBTax Tax Service Partners"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AR_LATE_CHARGE_UPG"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2006/06/27"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2006/06/27"
+    MEANING = "Receivables Late Charges Migration"
+    DESCRIPTION = "Receivables Late Charges Migration"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "AST_RC_CALL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2006/08/24"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2006/08/24"
+    MEANING = "TeleSales Media e-Business Center"
+    DESCRIPTION = "TeleSales Media e-Business Center"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "IGI_STP"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2009/03/04"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2009/03/04"
+    MEANING = "Single Third Party"
+    DESCRIPTION = "Single Third Party"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "SR_ONETIME"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2009/04/06"
+    OWNER = "ORACLE12.1.3"
+    LAST_UPDATE_DATE = "2009/04/06"
+    MEANING = "Service One-Time Location"
+    DESCRIPTION = "Service One-Time Location"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCAPI_MAIL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2011/12/26"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2011/12/26"
+    MEANING = "Email Creation using TCA API"
+    DESCRIPTION = "Email Creation using TCA API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "DUN_CON_UPL"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2011/12/26"
+    OWNER = "ANONYMOUS"
+    LAST_UPDATE_DATE = "2011/12/26"
+    MEANING = "Trading Community Architecture API Process"
+    DESCRIPTION = "Trading Community Architecture API Process"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "PORTAL30_CON_PER"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2012/03/01"
+    OWNER = "VAIBHAV.GOYAL"
+    LAST_UPDATE_DATE = "2012/03/01"
+    MEANING = "Person Creation Using Portal"
+    DESCRIPTION = "Person Creation Using Portal"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCAPI_ACCT_ROLE"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2012/03/01"
+    OWNER = "VAIBHAV.GOYAL"
+    LAST_UPDATE_DATE = "2012/03/01"
+    MEANING = "Role Creation Using TCA API"
+    DESCRIPTION = "Role Creation Using TCA API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCAPI_CONTACT_RELATION"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2012/03/01"
+    OWNER = "VAIBHAV.GOYAL"
+    LAST_UPDATE_DATE = "2012/03/01"
+    MEANING = "Contact Relationship Creation Using TCA API"
+    DESCRIPTION = "Contact Relationship Creation Using TCA API"
+  END FND_LOOKUP_VALUE
+  
+  BEGIN FND_LOOKUP_VALUE "TCAPI_ROLE_RESP"
+    ENABLED_FLAG = "Y"
+    START_DATE_ACTIVE = "2012/03/01"
+    OWNER = "VAIBHAV.GOYAL"
+    LAST_UPDATE_DATE = "2012/03/01"
+    MEANING = "Role Responsibility Creation Using TCA API"
+    DESCRIPTION = "Role Responsibility Creation Using TCA API"
+  END FND_LOOKUP_VALUE
+  
+END FND_LOOKUP_TYPE
+

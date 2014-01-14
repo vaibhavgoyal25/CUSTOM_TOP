@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+#************************************************************************************************************+
+#--File Name          : XXRS_VERACODE_MEMLK_FIX_INSTALL_130625-10101.sh                                      |
+#--Program Purpose    : Install script to compile Objects to fix Veracode Memory Leak Issue.                 |
+#--Author Name        : Rahul Boddireddy                                                                     |
+#--Initial Build Date : 10-JAN-2014                                                                          | 
+#--Version            : 1.0.0                                                                                |  
+#--Ticket Number      : 130625-10101                                                                         |
+#------------------------------------------------------------------------------------------------------------+
+#--Modification History                                                                                      |
+#------------------------------------------------------------------------------------------------------------+
+#   | Ver   | Ticket No.   | Author          | Date       | Description                                      |
+#------------------------------------------------------------------------------------------------------------+
+#   | 1.0.0 | 130625-10101 | Rahul B         | 10-JAN-2014| Initial Build                                    |
+#------------------------------------------------------------------------------------------------------------+
+#************************************************************************************************************/
+# $Header:XXRS_VERACODE_MEMLK_FIX_INSTALL_130625-10101.sh 1.0.0 10-JAN-2014 11:29:44 AM Rahul B $ 
+#
+#--------------------------------------------------------------------------
+# Set the environmental variables and other administrative requirements.
+#--------------------------------------------------------------------------
+DATETIMESTAMP=`date +%Y%m%d%H%M%S`
+l_env=`echo $TWO_TASK | awk '{print substr($0,0,3)}'`
+l_env1=`echo $TWO_TASK | tr '[:upper:]' '[:lower:]'`
+p_apps_usrn_pwd=$1
+jdbc=`echo $AD_APPS_JDBC_URL`
+CUSTOM_TOP=$XXRS_TOP
+FRM_DIR=$CUSTOM_TOP/forms/US
+SQL_DIR=$CUSTOM_TOP/install/sql
+LDT_DIR=$CUSTOM_TOP/install/ldt
+XML_DIR=$CUSTOM_TOP/xml
+LOG_DIR=$CUSTOM_TOP/log
+INSTALL_DIR=$CUSTOM_TOP/install
+OUTDIR=$CUSTOM_TOP/out
+OUTFILE=$OUTDIR/XXRS_VERACODE_MEMLK_FIX_INSTALL_130625-10101_"$DATETIMESTAMP".out
+apps_login=apps
+#--------------------------------------------------------------------------
+# Define the function to get the APPS password.
+#--------------------------------------------------------------------------
+Psswd()
+{
+  if [ -n "$p_apps_usrn_pwd" ];then
+    apps_pwd=${p_apps_usrn_pwd##*/}
+  else
+    echo "Please enter apps password =>"
+    stty -echo
+    read apps_pwd
+    p_apps_usrn_pwd=apps/$apps_pwd
+    stty echo
+  fi
+}
+
+#--------------------------------------------------------------------------
+# Set permissions on folders
+#--------------------------------------------------------------------------
+SetPermisssions()
+{
+if [ $l_env = "DEV" ]; then 
+  cd $JAVA_TOP/xxrs/oracle/apps
+  chmod -R 777 $JAVA_TOP/xxrs/oracle/apps/xxrs/
+else
+  cd $JAVA_TOP/xxrs/oracle/apps
+  chmod -R 755 $JAVA_TOP/xxrs/oracle/apps/xxrs/
+fi
+}
+
+#--------------------------------------------------------------------------
+# Download OA Framework Files
+#--------------------------------------------------------------------------
+Createfwkfiles() 
+{
+  cd $JAVA_TOP/xxrs/oracle/apps/xxrs/
+  
+  if [ $l_env = "DEV" ]; then
+  chmod -R 777 $JAVA_TOP/xxrs/oracle/apps/xxrs/cp
+  else
+  chmod -R 755 $JAVA_TOP/xxrs/oracle/apps/xxrs/cp
+  fi
+
+  tar xvzf $JAVA_TOP/xxrs/install/xxrs_oaf_veracode_memlk_130625-10101.tar.gz
+  
+  export CLASSPATH=/app/product/$l_env1/jar/*:$CLASSPATH
+
+  javac $JAVA_TOP/xxrs/oracle/apps/xxrs/cp/DeviceNameChange.java
+}
+
+#--------------------------------------------------------------------------
+# Mailing output file
+#--------------------------------------------------------------------------
+MailOutFile()
+{
+  /bin/mail rahul.boddireddy@rackspace.com -c vinodh.bhasker@rackspace.com,pavan.amirineni@rackspace.com,bruce.martinez@rackspace.com,tim.cowen@rackspace.com, sachin.garg@rackspace.com -s "Installation log for Fixing Veracode Memory Leak in ${TWO_TASK}" < $OUTFILE
+}
+#---------------------------------------------------------------------
+# Call the functions					      
+#---------------------------------------------------------------------
+
+Psswd
+
+echo -e "\nChanging permissions recursively on $JAVA_TOP/xxrs/oracle/apps/xxrs/ ...\n" >> $OUTFILE
+SetPermisssions
+
+echo -e "\nUnzipping and compiling Java Components to $JAVA_TOP/xxrs/oracle/apps/xxrs/cp ...\n" >> $OUTFILE
+Createfwkfiles
+
+echo -e "\nChanging permissions recursively on $JAVA_TOP/xxrs/oracle/apps/xxrs/ ...\n" >> $OUTFILE
+SetPermisssions
+
+echo -e "\nDone.\n" >> $OUTFILE
+
+echo -e "\nEmailing the outfile.\n"
+MailOutFile
+
+echo -e "\nOutput file is ${OUTFILE}"
