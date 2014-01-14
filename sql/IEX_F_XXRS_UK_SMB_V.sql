@@ -1,6 +1,6 @@
 /**********************************************************************************************************************
 *                                                                                                                     *
-* NAME : IEX_F_XXRS_UK_SMB_V.sql                                                                                      *
+* NAME : IEX_F_XXRS_UK_SMB_V.sql  Mahesh changed it                                                                                    *
 *                                                                                                                     *
 * DESCRIPTION : View to list US smb delinquent customers                                                              *
 *                                                                                                                     *
