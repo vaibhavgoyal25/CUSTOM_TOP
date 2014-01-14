@@ -1,10 +1,7 @@
 #!/bin/ksh
 # /*********************************************************************************************************
-<<<<<<< HEAD
-# * NAME : XXRSFNDMIGUTL.prog           Change in Master                                                                   *
-=======
-# * NAME : XXRSFNDMIGUTL.prog   140114-11120 Change 1 in Branch                                                                           *
->>>>>>> 140114-11120
+# * NAME : XXRSFNDMIGUTL.prog           Change in Master                                                   *
+# * NAME : XXRSFNDMIGUTL.prog   140114-11120 Change 1 in Branch                                            *
 # *                                                                                                        *
 # * DESCRIPTION : Rackspace Migration Utility.                                                             *
 # *                                                                                                        *
