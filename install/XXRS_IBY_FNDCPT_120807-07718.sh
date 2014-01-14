@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #************************************************************************************************************+
-#--File Name          :       XXRS_IBY_FNDCPT_120807-07718.sh                                                |
+#--File Name          :       XXRS_IBY_FNDCPT_120807-07718.sh   Added to git                                             |
 #--Program Purpose    :       Install script to execute Oracle Datafix for payment extensions on CM          |
 #--Author Name        :       Vinodh Bhasker                                                                 |
 #--Initial Build Date :       29-AUG-2012                                                                    |
