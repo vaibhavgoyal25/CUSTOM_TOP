@@ -1,5 +1,5 @@
 /**********************************************************************************************************************
-* NAME : XXRS_FIX_AR_HK_RECEIPT_140108-10271.sql                                                                      *
+* NAME : XXRS_FIX_AR_HK_RECEIPT_140108-10271.sql  Git changes 140114-11112                                                                    *
 *                                                                                                                     *
 * DESCRIPTION :                                                                                                       *
 * One-off script to fix the receipt number 'WIRE_16-DEC-2013_1_123713' and 'WIRE_08-JAN-2014_1_128962'                *
